@@ -57,3 +57,5 @@ Thumbs.db
 # Specialized AI tool files
 .agents/
 .playwright-mcp/
+task.md
+implementation_plan.md
