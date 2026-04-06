@@ -3,17 +3,20 @@
 ## ✅ PASSOS DE DEBUG (Na Ordem)
 
 ### **PASSO 1: Abrir Console do Navegador**
+
 ```
 Pressione: F12 (ou Ctrl+Shift+I)
 Clique em: Console
 ```
 
 ### **PASSO 2: Testar Conectividade Básica**
+
 1. Acesse: `http://localhost:3000/debug` (ou sua URL do frontend)
 2. Clique em "Testar Conexão"
 3. Verifique os logs no console
 
 **Resultados esperados:**
+
 ```
 ✅ BACKEND ONLINE: { message: "Bem-vindo à API de Maturidade TI" }
 ```
@@ -25,6 +28,7 @@ Clique em: Console
 ### Erro: "NÃO CONSEGUIU CONECTAR"
 
 **Causas possíveis:**
+
 1. Backend não está rodando
 2. URL da API incorreta
 3. CORS bloqueando
@@ -61,13 +65,13 @@ npm run dev
 ```javascript
 // Copie isto no console do navegador para testar um usuário padrão:
 
-fetch('http://localhost:8000/token', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-  body: 'username=admin&password=admin123'
+fetch("http://localhost:8000/token", {
+  method: "POST",
+  headers: { "Content-Type": "application/x-www-form-urlencoded" },
+  body: "username=admin&password=admin123",
 })
-.then(r => r.json())
-.then(data => console.log(data))
+  .then((r) => r.json())
+  .then((data) => console.log(data));
 ```
 
 **Se funcionar no console, o problema está no frontend**
@@ -78,7 +82,7 @@ fetch('http://localhost:8000/token', {
 ### Erro: "CORS error"
 
 ```
-Access to XMLHttpRequest at 'http://localhost:8000/token' from origin 'http://localhost:3000' 
+Access to XMLHttpRequest at 'http://localhost:8000/token' from origin 'http://localhost:3000'
 has been blocked by CORS policy
 ```
 
@@ -108,9 +112,10 @@ Parabéns! O backend está OK. Agora:
 3. **Verifique se token é salvo em localStorage**
 
 Para ver localStorage:
+
 ```javascript
 // No console:
-localStorage.getItem('token')  // Deve mostrar um token JWT longo
+localStorage.getItem("token"); // Deve mostrar um token JWT longo
 ```
 
 ---
@@ -134,6 +139,7 @@ Marque conforme você versa:
 
 1. **Cole o erro completo** que vê no console (F12)
 2. **Verifique os logs do backend**:
+
    ```bash
    # Terminal do backend, procure por:
    # POST /token 200  ✅ Sucesso

@@ -12,7 +12,9 @@ const Login = () => {
     try {
       await login(username, password);
     } catch (err) {
-      setError('Credenciais inválidas. Tente novamente.');
+      console.error('Erro capturado em Login:', err);
+      const errorMessage = err.message || 'Erro ao fazer login. Tente novamente.';
+      setError(errorMessage);
     }
   };
 

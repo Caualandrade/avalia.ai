@@ -38,6 +38,8 @@ export const AuthProvider = ({ children }) => {
       params.append('password', password);
       
       console.log(`🔐 Tentando login em: ${API_URL}/token`);
+      console.log('📤 Enviando data:', { username });
+      
       const response = await axios.post(`${API_URL}/token`, params, {
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded'
@@ -49,8 +51,18 @@ export const AuthProvider = ({ children }) => {
       console.log('✅ Login bem-sucedido!');
       await fetchMe(access_token);
     } catch (error) {
-      console.error('❌ Erro no login:', error.response?.data || error.message);
-      throw error;
+      console.error('❌ ERRO COMPLETO:', {
+        message: error.message,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        config: {
+          url: error.config?.url,
+          method: error.config?.method,
+          headers: error.config?.headers
+        }
+      });
+      throw new Error(error.response?.data?.detail || error.message || 'Erro ao fazer login');
     }
   };
 
