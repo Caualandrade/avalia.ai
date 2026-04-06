@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
+import { API_URL } from '../config';
 
 const Register = ({ onBackToLogin }) => {
   const [formData, setFormData] = useState({
@@ -16,7 +17,7 @@ const Register = ({ onBackToLogin }) => {
     e.preventDefault();
     setError('');
     try {
-      await axios.post('http://localhost:8000/register', formData);
+      await axios.post(`${API_URL}/register`, formData);
       setSuccess(true);
       setTimeout(() => onBackToLogin(), 2000);
     } catch (err) {
