@@ -14,13 +14,10 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copia o código fonte (será sobrescrito pelo volume em desenvolvimento)
+# Copia o código fonte
 COPY . .
-
-# Dá permissão de execução ao script de inicialização
-RUN chmod +x start.sh
 
 EXPOSE 8000
 
-# Comando para rodar a aplicação através do script
-CMD ["./start.sh"]
+# Comando para rodar a aplicação
+CMD uvicorn main:app --host 0.0.0.0 --port 8000
