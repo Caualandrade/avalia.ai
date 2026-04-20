@@ -17,6 +17,9 @@ RUN npm run build
 # Production stage - Use nginx para servir os arquivos estáticos
 FROM nginx:alpine
 
+# Install gettext for envsubst (runtime env injection)
+RUN apk add --no-cache gettext
+
 # Remove configuração padrão do nginx
 RUN rm /etc/nginx/conf.d/default.conf
 
@@ -26,6 +29,10 @@ COPY --from=builder /app/dist /usr/share/nginx/html
 # Configuração do nginx para servir SPA (React Router)
 RUN echo 'server { listen 3000; server_name localhost; location / { root /usr/share/nginx/html; try_files $uri $uri/ /index.html; } }' > /etc/nginx/conf.d/default.conf
 
+# Entrypoint que injeta variáveis de ambiente em runtime
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
+
 EXPOSE 3000
 
-CMD ["nginx", "-g", "daemon off;"]
+ENTRYPOINT ["/docker-entrypoint.sh"]
