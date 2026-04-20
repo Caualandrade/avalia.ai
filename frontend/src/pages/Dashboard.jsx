@@ -27,6 +27,8 @@ const Icon = ({ name, size = 18, color = 'currentColor' }) => {
     clock:     <><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></>,
     robot:     <><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" y1="16" x2="8" y2="16"/><line x1="16" y1="16" x2="16" y2="16"/></>,
     settings:  <><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></>,
+    menu:      <><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></>,
+    close:     <><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="18" x2="18" y2="6"/></>,
   };
   return (
     <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24"
@@ -115,7 +117,7 @@ const AdminView = () => {
   return (
     <div className="fade-in">
       <h3>Visão Geral do Sistema (Admin)</h3>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem', marginTop: '1.5rem' }}>
+      <div className="stack-mobile" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem', marginTop: '1.5rem' }}>
         {[
           { label: 'Usuários Cadastrados', val: stats.total_users, color: 'var(--primary)' },
           { label: 'Empresas Ativas', val: stats.companies, color: 'var(--text-main)' },
@@ -384,7 +386,7 @@ const EvaluatorQuestions = () => {
         <h4 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem', fontSize: '0.9rem' }}>
           <Icon name="plus" color="var(--primary)" /> Nova Pergunta
         </h4>
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(200px, 300px) 1fr 120px', gap: '1.5rem', alignItems: 'end' }}>
+        <div className="stack-mobile" style={{ display: 'grid', gridTemplateColumns: 'minmax(200px, 300px) 1fr 120px', gap: '1.5rem', alignItems: 'end' }}>
           <div>
             <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '700' }}>DESTINO TÉCNICO</label>
             <select value={newQuest.subcategory_id} onChange={e => { setNewQuest({ ...newQuest, subcategory_id: e.target.value }); setAiSuggestions([]); }} style={{ marginBottom: 0, marginTop: '0.5rem' }}>
@@ -523,7 +525,7 @@ const EvaluatorInvitePanel = () => {
         <h4 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <Icon name="mail" color="var(--primary)" /> Enviar Convite de Entrevista
         </h4>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+        <div className="stack-mobile" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
           <div>
             <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '700' }}>EMPRESA</label>
             <select value={form.company_id} onChange={e => setForm({ ...form, company_id: e.target.value })} style={{ marginTop: '0.5rem' }}>
@@ -840,7 +842,7 @@ const CompanyHome = ({ onGoToInterviews, onGoToFeedbacks }) => {
 
   return (
     <div className="fade-in">
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem', marginBottom: '3rem' }}>
+      <div className="stack-mobile" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem', marginBottom: '3rem' }}>
         <div className="glass-card" style={{ cursor: 'pointer' }} onClick={onGoToInterviews}>
           <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Convites Pendentes</p>
           <h2 style={{ color: pendingInvites > 0 ? 'var(--warning)' : 'var(--text-main)' }}>{pendingInvites}</h2>
@@ -865,7 +867,7 @@ const CompanyHome = ({ onGoToInterviews, onGoToFeedbacks }) => {
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+      <div className="stack-mobile" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
         <div className="glass-card" style={{ textAlign: 'center', padding: '3rem' }}>
           <div style={{ padding: '1rem', background: 'rgba(0,229,255,0.1)', borderRadius: '50%', width: 'fit-content', margin: '0 auto 1.5rem' }}>
             <Icon name="mail" size={32} color="var(--primary)" />
@@ -888,7 +890,7 @@ const CompanyHome = ({ onGoToInterviews, onGoToFeedbacks }) => {
 };
 
 // ─── Sidebar ──────────────────────────────────────────────────────────────────
-const Sidebar = ({ activeTab, setActiveTab, role, logout }) => {
+const Sidebar = ({ activeTab, setActiveTab, role, logout, open, onClose }) => {
   const menuItems = {
     ADMIN: [
       { id: 'MAIN', label: 'Monitoramento', icon: 'stats' },
@@ -909,12 +911,18 @@ const Sidebar = ({ activeTab, setActiveTab, role, logout }) => {
     ],
   };
   return (
-    <aside className="sidebar">
+    <aside className={`sidebar ${open ? 'open' : ''}`}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '4rem' }}>
         <div style={{ width: '45px', height: '45px', background: 'var(--primary)', borderRadius: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#00363d' }}>
           <Icon name="sparkles" />
         </div>
-        <h2 style={{ letterSpacing: '-1px', fontSize: '1.3rem', fontWeight: '900' }}>AVALIA.<span style={{ color: 'var(--primary)' }}>AI</span></h2>
+        <h2 style={{ letterSpacing: '-1px', fontSize: '1.3rem', fontWeight: '900', flex: 1 }}>AVALIA.<span style={{ color: 'var(--primary)' }}>AI</span></h2>
+        {onClose && (
+          <button onClick={onClose} className="hide-desktop" aria-label="Fechar menu"
+            style={{ background: 'transparent', border: 'none', color: 'var(--text-main)', cursor: 'pointer', padding: '0.4rem' }}>
+            <Icon name="close" size={22} />
+          </button>
+        )}
       </div>
       <nav className="sidebar-nav" style={{ flex: 1 }}>
         {menuItems[role]?.map(item => (
@@ -933,7 +941,7 @@ const Sidebar = ({ activeTab, setActiveTab, role, logout }) => {
 };
 
 // ─── Top Navbar ───────────────────────────────────────────────────────────────
-const TopNavbar = ({ user, activeTab }) => {
+const TopNavbar = ({ user, activeTab, onMenuClick }) => {
   const labels = {
     MAIN: 'Painel Central', categories: 'Domínios e Estrutura', questions: 'Base de Conhecimento',
     invites: 'Entrevistas', interviews: 'Minhas Entrevistas', feedbacks: 'Meus Feedbacks',
@@ -941,10 +949,15 @@ const TopNavbar = ({ user, activeTab }) => {
   };
   return (
     <header className="top-navbar">
-      <div className="breadcrumb">
-        <Icon name="home" size={14} />
-        <span style={{ opacity: 0.2 }}>/</span>
-        <span style={{ color: 'var(--text-main)', fontWeight: '700', fontSize: '0.9rem' }}>{labels[activeTab] || activeTab}</span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: 0 }}>
+        <button className="hamburger-btn hide-desktop" onClick={onMenuClick} aria-label="Abrir menu">
+          <Icon name="menu" size={22} />
+        </button>
+        <div className="breadcrumb">
+          <Icon name="home" size={14} />
+          <span style={{ opacity: 0.2 }}>/</span>
+          <span style={{ color: 'var(--text-main)', fontWeight: '700', fontSize: '0.9rem' }}>{labels[activeTab] || activeTab}</span>
+        </div>
       </div>
       <div className="user-badge" style={{ padding: '0.8rem 1.5rem' }}>
         <div style={{ textAlign: 'right' }}>
@@ -967,6 +980,12 @@ const Dashboard = () => {
   const [interviewData, setInterviewData] = useState({ sessionId: null, assessmentId: null, mode: null, inviteId: null });
   const [feedbackAssessmentId, setFeedbackAssessmentId] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [navOpen, setNavOpen] = useState(false);
+
+  useEffect(() => {
+    document.body.style.overflow = navOpen ? 'hidden' : '';
+    return () => { document.body.style.overflow = ''; };
+  }, [navOpen]);
 
   const handleStartInterview = (sessionId, assessmentId, mode = 'GUIDED', inviteId = null) => {
     setInterviewData({ sessionId, assessmentId, mode, inviteId });
@@ -986,6 +1005,7 @@ const Dashboard = () => {
   const handleSidebarNav = (tab) => {
     setView('MAIN');
     setActiveTab(tab);
+    setNavOpen(false);
   };
 
   const handleBack = () => {
@@ -1026,10 +1046,11 @@ const Dashboard = () => {
 
   return (
     <div className="layout-wrapper">
-      <Sidebar activeTab={activeTab} setActiveTab={handleSidebarNav} role={user?.role} logout={logout} />
+      {navOpen && <div className="sidebar-backdrop hide-desktop" onClick={() => setNavOpen(false)} />}
+      <Sidebar activeTab={activeTab} setActiveTab={handleSidebarNav} role={user?.role} logout={logout} open={navOpen} onClose={() => setNavOpen(false)} />
       <div className="main-content">
-        <TopNavbar user={user} activeTab={activeTab} />
-        <main style={{ padding: '4rem' }}>
+        <TopNavbar user={user} activeTab={activeTab} onMenuClick={() => setNavOpen(true)} />
+        <main className="dashboard-main" style={{ padding: '4rem' }}>
           {/* ADMIN */}
           {user?.role === 'ADMIN' && activeTab === 'MAIN' && <AdminView />}
           {user?.role === 'ADMIN' && activeTab === 'USERS' && <AdminUsersView />}

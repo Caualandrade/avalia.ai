@@ -38,15 +38,15 @@ const Register = ({ onBackToLogin }) => {
   }
 
   return (
-    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', background: 'radial-gradient(circle at top right, #1e293b, #0f172a)' }}>
-      <div className="glass-card fade-in" style={{ width: '450px' }}>
+    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', padding: '1rem', background: 'radial-gradient(circle at top right, #1e293b, #0f172a)' }}>
+      <div className="glass-card fade-in" style={{ width: '100%', maxWidth: '450px' }}>
         <h2 style={{ textAlign: 'center', marginBottom: '0.5rem' }}>Criar Nova Conta</h2>
         <p style={{ color: 'var(--text-muted)', textAlign: 'center', marginBottom: '2rem' }}>Junte-se à plataforma de Maturidade TI</p>
 
         {error && <p style={{ color: 'var(--danger)', textAlign: 'center', marginBottom: '1rem' }}>{error}</p>}
 
         <form onSubmit={handleSubmit}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+          <div className="stack-mobile" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
             <div>
               <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem' }}>Usuário</label>
               <input 

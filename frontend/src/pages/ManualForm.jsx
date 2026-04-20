@@ -110,7 +110,7 @@ const ManualForm = ({ assessmentId, inviteId, onComplete, onBack }) => {
   );
 
   return (
-    <div className="fade-in" style={{ maxWidth: '900px', margin: '0 auto', padding: '2rem' }}>
+    <div className="fade-in manual-form-wrapper" style={{ maxWidth: '900px', margin: '0 auto', padding: '2rem' }}>
       <button className="btn-secondary" onClick={onBack} style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
         <Icon name="arrowLeft" size={16} /> Voltar
       </button>
