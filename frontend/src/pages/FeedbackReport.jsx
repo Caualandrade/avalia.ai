@@ -32,7 +32,7 @@ const ScoreGauge = ({ score }) => {
 
   return (
     <div className="fb-gauge-wrap">
-      <svg width="220" height="220" viewBox="0 0 220 220">
+      <svg width="100%" viewBox="0 0 220 220" style={{ maxWidth: '220px', height: 'auto', display: 'block' }}>
         <circle cx="110" cy="110" r={radius} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="16" />
         <circle
           cx="110" cy="110" r={radius}

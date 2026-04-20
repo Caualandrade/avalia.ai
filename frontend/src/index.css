@@ -826,3 +826,83 @@ input:focus, select:focus {
   opacity: 0.3;
   font-size: 0.7rem;
 }
+
+/* === Responsive Utilities & Mobile Overrides === */
+.hide-desktop { display: none; }
+
+@media (max-width: 640px) {
+  .hide-mobile  { display: none !important; }
+  .hide-desktop { display: flex; }
+  .stack-mobile { grid-template-columns: 1fr !important; gap: 1rem !important; }
+  .mobile-full-width { width: 100% !important; max-width: 100% !important; }
+
+  /* Shell */
+  .container      { padding: 0 1rem; }
+  .glass-card     { padding: 1.25rem; border-radius: 16px; }
+  .top-navbar     { height: 64px; padding: 0 1rem; }
+  .layout-wrapper { flex-direction: column; }
+  .dashboard-main { padding: 1.5rem 1rem !important; }
+
+  /* Sidebar -> drawer */
+  .sidebar {
+    position: fixed; top: 0; left: 0;
+    width: 82vw; max-width: 320px; height: 100vh;
+    transform: translateX(-100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 200;
+    box-shadow: 4px 0 30px rgba(0, 0, 0, 0.5);
+  }
+  .sidebar.open { transform: translateX(0); }
+  .sidebar-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    z-index: 150;
+  }
+  .hamburger-btn {
+    width: 44px; height: 44px;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--surface-high);
+    border: 1px solid var(--glass-border);
+    border-radius: 10px;
+    color: var(--text-main);
+    cursor: pointer;
+  }
+
+  /* Tipografia e toque */
+  h2 { font-size: 1.5rem; }
+  h3 { font-size: 1.2rem; }
+  .btn-primary, .btn-secondary { min-height: 44px; padding: 0.85rem 1.4rem; }
+  .icon-btn { min-width: 40px; min-height: 40px; }
+  input, select, textarea { min-height: 44px; padding: 0.85rem 1rem; font-size: 1rem; }
+
+  /* Grids específicos */
+  .creation-header { flex-direction: column; gap: 1rem; margin-bottom: 2rem; }
+  .fb-grid-2       { grid-template-columns: 1fr; gap: 1.5rem; }
+  .fb-recs-grid    { grid-template-columns: 1fr; }
+  .fb-hero         { flex-direction: column; gap: 1.5rem; text-align: center; }
+  .fb-hero-score   { font-size: 4rem; letter-spacing: -2px; }
+  .fb-gauge-wrap   { max-width: 180px; margin: 0 auto; }
+  .fb-wrapper      { padding: 1.5rem 1rem; }
+  .fb-footer       { flex-direction: column; gap: 0.5rem; text-align: center; }
+
+  /* Chat */
+  .ic-header         { padding: 0.75rem 1rem; }
+  .ic-messages       { padding: 1rem; gap: 1rem; }
+  .ic-message        { max-width: 92%; }
+  .ic-bubble         { padding: 0.8rem 1rem; }
+  .ic-bubble-text    { font-size: 0.9rem; }
+  .ic-progress-track { width: 100px; }
+  .ic-progress-label { display: none; }
+  .ic-input-area     { padding: 0.8rem 1rem; }
+
+  /* Form manual */
+  .manual-form-wrapper { padding: 1rem !important; }
+  .manual-form-wrapper .glass-card { padding: 1.5rem !important; }
+}
+
+@media (min-width: 641px) and (max-width: 1024px) {
+  .sidebar     { width: 220px; padding: 1.5rem 1rem; }
+  .top-navbar  { padding: 0 1.5rem; }
+  .creation-header { flex-wrap: wrap; }
+}
