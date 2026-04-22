@@ -19,5 +19,5 @@ COPY . .
 
 EXPOSE 8000
 
-# Comando para rodar a aplicação
-CMD uvicorn main:app --host 0.0.0.0 --port 8000
+# Comando para rodar a aplicação (migração executada antes do servidor)
+CMD python migrate.py && uvicorn main:app --host 0.0.0.0 --port 8000
