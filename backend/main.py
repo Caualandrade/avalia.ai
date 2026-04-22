@@ -111,6 +111,24 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
 async def read_users_me(current_user: models.User = Depends(get_current_user)):
     return current_user
 
+@app.put("/users/me/profile", response_model=schemas.UserResponse)
+def update_my_profile(
+    profile: schemas.UserProfileUpdate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(check_company),
+):
+    if profile.sector is not None:
+        current_user.sector = profile.sector
+    if profile.employee_count is not None:
+        current_user.employee_count = profile.employee_count
+    if profile.it_model is not None:
+        current_user.it_model = profile.it_model
+    if profile.regulations is not None:
+        current_user.regulations = profile.regulations
+    db.commit()
+    db.refresh(current_user)
+    return current_user
+
 # ─── Admin ───────────────────────────────────────────────────────────────────
 
 @app.post("/admin/users", response_model=schemas.UserResponse)
@@ -252,10 +270,14 @@ def delete_subcategory(sub_id: int, db: Session = Depends(get_db), current_user:
 
 @app.post("/questions", response_model=schemas.QuestionResponse)
 def create_question(question: schemas.QuestionCreate, db: Session = Depends(get_db), current_user: models.User = Depends(check_evaluator)):
-    db_q = models.Question(**question.dict())
+    data = question.dict()
+    refs = data.pop("framework_refs", None)
+    db_q = models.Question(**data)
+    db_q.framework_refs = json.dumps(refs, ensure_ascii=False) if refs else None
     db.add(db_q)
     db.commit()
     db.refresh(db_q)
+    db_q.framework_refs = refs
     return db_q
 
 @app.put("/questions/{question_id}", response_model=schemas.QuestionResponse)
@@ -264,8 +286,11 @@ def update_question(question_id: int, question: schemas.QuestionUpdate, db: Sess
     if not db_q:
         raise HTTPException(status_code=404, detail="Pergunta não encontrada")
     db_q.text = question.text
+    if question.framework_refs is not None:
+        db_q.framework_refs = json.dumps(question.framework_refs, ensure_ascii=False)
     db.commit()
     db.refresh(db_q)
+    db_q.framework_refs = json.loads(db_q.framework_refs) if db_q.framework_refs else None
     return db_q
 
 @app.delete("/questions/{question_id}")
@@ -742,6 +767,22 @@ async def websocket_interview(session_id: int, websocket: WebSocket, db: Session
                 await _generate_and_save_feedback(assessment.id, db)
                 break
             
+            # Monta perfil organizacional da empresa (M01)
+            company_user = db.query(models.User).filter(
+                models.User.id == assessment.company_id
+            ).first()
+            org_profile = None
+            if company_user and any([
+                company_user.sector, company_user.employee_count,
+                company_user.it_model, company_user.regulations
+            ]):
+                org_profile = {
+                    "sector": company_user.sector,
+                    "employee_count": company_user.employee_count,
+                    "it_model": company_user.it_model,
+                    "regulations": company_user.regulations,
+                }
+
             # Gera próxima mensagem do agente
             agent_reply = await conduct_interview(
                 history=history,
@@ -749,6 +790,7 @@ async def websocket_interview(session_id: int, websocket: WebSocket, db: Session
                 autonomous=is_autonomous,
                 questions_asked=session.questions_asked,
                 total_questions=session.total_questions,
+                org_profile=org_profile,
             )
             
             # Determina se é uma pergunta de avaliação
@@ -803,17 +845,29 @@ async def _generate_and_save_feedback(assessment_id: int, db: Session):
             return
         
         score_geral = sum(r["score"] for r in responses_data) / len(responses_data)
-        nivel, descricao = calculate_maturity_level(score_geral)
-        
+        nivel, descricao, nivel_numerico = calculate_maturity_level(score_geral)
+
+        # M02 — calcular coverage_map com base nos framework_refs das perguntas respondidas
+        coverage_counter: dict[str, int] = {}
+        for r in assessment.responses:
+            if r.question and r.question.framework_refs:
+                try:
+                    refs = json.loads(r.question.framework_refs)
+                    for ref in refs:
+                        prefix = ref.split(":")[0]
+                        coverage_counter[prefix] = coverage_counter.get(prefix, 0) + 1
+                except Exception:
+                    pass
+
         assessment_data = {
             "company_name": assessment.company.company_name or assessment.company.username,
             "mode": assessment.mode,
             "score_geral": round(score_geral, 2),
             "responses": responses_data,
         }
-        
+
         feedback_data = await generate_feedback(assessment_data)
-        
+
         # Salva feedback
         feedback = models.AIFeedback(
             assessment_id=assessment_id,
@@ -824,6 +878,8 @@ async def _generate_and_save_feedback(assessment_id: int, db: Session):
             category_scores=json.dumps(feedback_data.get("category_scores", {}), ensure_ascii=False),
             score_geral=round(score_geral, 2),
             nivel=nivel,
+            nivel_numerico=nivel_numerico,
+            coverage_map=json.dumps(coverage_counter, ensure_ascii=False) if coverage_counter else None,
         )
         db.add(feedback)
         
@@ -851,6 +907,8 @@ def get_feedback(assessment_id: int, db: Session = Depends(get_db), current_user
         category_scores=json.loads(feedback.category_scores),
         score_geral=feedback.score_geral,
         nivel=feedback.nivel,
+        nivel_numerico=feedback.nivel_numerico or 0,
+        coverage_map=json.loads(feedback.coverage_map) if feedback.coverage_map else None,
         generated_at=feedback.generated_at,
     )
 

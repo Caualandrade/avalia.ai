@@ -95,10 +95,11 @@ INTERVIEWER_AUTONOMOUS_PROMPT = """Você é um consultor sênior de Maturidade d
 Sua missão é conduzir uma avaliação autônoma e completa do nível de maturidade de TI de uma empresa.
 
 Domínios a cobrir (selecione perguntas estratégicas limitando-se ao número total configurado para a entrevista):
-- Governança de TI (comitês, alinhamento estratégico, ROI, compliance)
-- Gestão de Serviços (ITSM, catálogo, SLAs, incidentes, mudanças)
+- Governança Corporativa de TI (responsabilidade da diretoria: comitê de TI, alinhamento com metas de negócio, gestão de risco corporativo, compliance, ROI de TI)
+- Gestão de TI (responsabilidade do time operacional: processos, projetos, orçamento, contratos, fornecedores, métricas operacionais)
+- Gestão de Serviços (ITSM, catálogo, SLAs, incidentes, problemas, mudanças — ITIL v4)
 - Infraestrutura e Cloud (disponibilidade, escalabilidade, FinOps)
-- Segurança da Informação (políticas, controle de acesso, MFA, LGPD)
+- Segurança da Informação (políticas, controle de acesso, MFA, gestão de riscos, ISO 27001)
 - Gestão de Dados (qualidade, governança, analytics, LGPD)
 - Inovação e Transformação Digital (automação, IA, DevOps, cultura)
 - Pessoas e Capacitação (skills, certificações, retenção)
@@ -225,12 +226,25 @@ async def conduct_interview(
     questions_asked: int = 0,
     total_questions: int = 0,
     session_id: str = "",
+    org_profile: dict | None = None,
 ) -> str:
     """
     Gera a próxima mensagem do agente entrevistador.
     history: lista de dicts {"role": "agent"|"user", "content": str}
     """
     system_prompt = INTERVIEWER_AUTONOMOUS_PROMPT if autonomous else INTERVIEWER_GUIDED_PROMPT
+
+    if org_profile:
+        regs = org_profile.get("regulations") or "não informadas"
+        profile_ctx = (
+            f"\n\n=== CONTEXTO DA EMPRESA AVALIADA ===\n"
+            f"Setor: {org_profile.get('sector') or 'não informado'}\n"
+            f"Porte: {org_profile.get('employee_count') or 'não informado'}\n"
+            f"Modelo de TI: {org_profile.get('it_model') or 'não informado'}\n"
+            f"Regulamentações aplicáveis: {regs}\n"
+            f"Adapte as perguntas e o nível de profundidade técnica a esse contexto.\n"
+        )
+        system_prompt += profile_ctx
 
     if not autonomous and questions_context:
         system_prompt += f"\n\n=== PERGUNTAS A REALIZAR ===\n{questions_context}\n\nRealize as perguntas acima em ordem, uma por vez."
@@ -310,7 +324,7 @@ async def generate_feedback(assessment_data: dict) -> dict:
     # Fallback — feedback estático baseado no score
     score = assessment_data.get("score_geral", 50)
     company = assessment_data.get("company_name", "a empresa")
-    nivel, _ = calculate_maturity_level(score)
+    nivel, _, _lvl = calculate_maturity_level(score)
 
     return {
         "overall_summary": (
@@ -398,15 +412,17 @@ Explique brevemente o processo e que as respostas devem ser em texto livre. Peç
         )
 
 
-def calculate_maturity_level(score: float) -> tuple[str, str]:
-    """Retorna (nível, descrição) baseado no score geral."""
+def calculate_maturity_level(score: float) -> tuple[str, str, int]:
+    """Retorna (nível, descrição, nível_0_a_5) baseado no score geral."""
     if score <= 20:
-        return ("Caótico / Inexistente", "A TI opera sem processos formais. As iniciativas são completamente ad-hoc e dependem de esforços individuais sem padronização.")
+        return ("Caótico / Inexistente", "A TI opera sem processos formais. As iniciativas são completamente ad-hoc e dependem de esforços individuais sem padronização.", 0)
     elif score <= 40:
-        return ("Inicial / Reativo", "A TI opera como um centro de custos isolado. Processos são ad-hoc e as soluções dependem fortemente do esforço individual.")
-    elif score <= 60:
-        return ("Definido / Padronizado", "Processos começam a ser padronizados e documentados. Existe foco em disponibilidade e prevenção de problemas rotineiros.")
-    elif score <= 80:
-        return ("Gerenciado / Proativo", "A TI está alinhada aos processos de negócio. Gestão baseada em indicadores e foco em entregar valor real à empresa.")
+        return ("Inicial / Reativo", "A TI opera como um centro de custos isolado. Processos são ad-hoc e as soluções dependem fortemente do esforço individual.", 1)
+    elif score <= 55:
+        return ("Definido / Padronizado", "Processos começam a ser padronizados e documentados. Existe foco em disponibilidade e prevenção de problemas rotineiros.", 2)
+    elif score <= 70:
+        return ("Gerenciado / Proativo", "A TI está alinhada aos processos de negócio. Gestão baseada em indicadores e foco em entregar valor real à empresa.", 3)
+    elif score <= 85:
+        return ("Otimizando / Estratégico", "A TI é parceira do negócio e motor de inovação. Tecnologia é usada para criar vantagens competitivas e novos modelos de receita.", 4)
     else:
-        return ("Otimizando / Estratégico", "A TI é parceira do negócio e motor de inovação. Tecnologia é usada para criar vantagens competitivas e novos modelos de receita.")
+        return ("Excelência / Referência", "A TI é referência no setor. Inovação contínua, benchmarks externos positivos e cultura de melhoria permanente.", 5)

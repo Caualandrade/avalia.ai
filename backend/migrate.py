@@ -19,6 +19,16 @@ def run_migration():
         ("ALTER TABLE responses ADD COLUMN IF NOT EXISTS ai_question TEXT", "ai_question em responses"),
         ("ALTER TABLE responses ALTER COLUMN question_id DROP NOT NULL", "question_id nullable"),
         ("ALTER TABLE responses ALTER COLUMN score DROP NOT NULL", "score nullable"),
+        # M01 — perfil organizacional em users
+        ("ALTER TABLE users ADD COLUMN IF NOT EXISTS sector VARCHAR", "sector em users"),
+        ("ALTER TABLE users ADD COLUMN IF NOT EXISTS employee_count VARCHAR", "employee_count em users"),
+        ("ALTER TABLE users ADD COLUMN IF NOT EXISTS it_model VARCHAR", "it_model em users"),
+        ("ALTER TABLE users ADD COLUMN IF NOT EXISTS regulations TEXT", "regulations em users"),
+        # M02 — rastreabilidade de frameworks
+        ("ALTER TABLE questions ADD COLUMN IF NOT EXISTS framework_refs TEXT", "framework_refs em questions"),
+        ("ALTER TABLE ai_feedbacks ADD COLUMN IF NOT EXISTS coverage_map TEXT", "coverage_map em ai_feedbacks"),
+        # M03 — nível numérico 0–5
+        ("ALTER TABLE ai_feedbacks ADD COLUMN IF NOT EXISTS nivel_numerico INTEGER DEFAULT 0", "nivel_numerico em ai_feedbacks"),
     ]
 
     with engine.begin() as conn:

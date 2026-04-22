@@ -29,6 +29,7 @@ const Icon = ({ name, size = 18, color = 'currentColor' }) => {
     settings:  <><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></>,
     menu:      <><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></>,
     close:     <><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="18" x2="18" y2="6"/></>,
+    user:      <><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></>,
   };
   return (
     <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24"
@@ -328,7 +329,7 @@ const EvaluatorDomains = () => {
 // ─── Evaluator: Question Bank ──────────────────────────────────────────────────
 const EvaluatorQuestions = () => {
   const [categories, setCategories] = useState([]);
-  const [newQuest, setNewQuest] = useState({ text: '', subcategory_id: '' });
+  const [newQuest, setNewQuest] = useState({ text: '', subcategory_id: '', framework_refs_raw: '' });
   const [aiSuggestions, setAiSuggestions] = useState([]);
   const [isGenerating, setIsGenerating] = useState(false);
 
@@ -345,8 +346,11 @@ const EvaluatorQuestions = () => {
     const text = textToUse || newQuest.text;
     if (!text || !newQuest.subcategory_id) return;
     const token = localStorage.getItem('token');
-    await axios.post(`${API_URL}/questions`, { ...newQuest, text }, { headers: { Authorization: `Bearer ${token}` } });
-    if (!textToUse) setNewQuest({ ...newQuest, text: '' });
+    const refs = newQuest.framework_refs_raw
+      ? newQuest.framework_refs_raw.split(',').map(s => s.trim()).filter(Boolean)
+      : null;
+    await axios.post(`${API_URL}/questions`, { subcategory_id: newQuest.subcategory_id, text, framework_refs: refs }, { headers: { Authorization: `Bearer ${token}` } });
+    if (!textToUse) setNewQuest({ ...newQuest, text: '', framework_refs_raw: '' });
     fetchCats();
   };
   const handleDeleteQuest = async (id) => {
@@ -386,7 +390,7 @@ const EvaluatorQuestions = () => {
         <h4 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem', fontSize: '0.9rem' }}>
           <Icon name="plus" color="var(--primary)" /> Nova Pergunta
         </h4>
-        <div className="stack-mobile" style={{ display: 'grid', gridTemplateColumns: 'minmax(200px, 300px) 1fr 120px', gap: '1.5rem', alignItems: 'end' }}>
+        <div className="stack-mobile" style={{ display: 'grid', gridTemplateColumns: 'minmax(200px, 300px) 1fr', gap: '1.5rem', alignItems: 'end' }}>
           <div>
             <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '700' }}>DESTINO TÉCNICO</label>
             <select value={newQuest.subcategory_id} onChange={e => { setNewQuest({ ...newQuest, subcategory_id: e.target.value }); setAiSuggestions([]); }} style={{ marginBottom: 0, marginTop: '0.5rem' }}>
@@ -399,6 +403,10 @@ const EvaluatorQuestions = () => {
           <div>
             <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '700' }}>ENUNCIADO DA PERGUNTA</label>
             <input value={newQuest.text} onChange={e => setNewQuest({ ...newQuest, text: e.target.value })} placeholder="Descreva o critério de avaliação..." style={{ marginBottom: 0, marginTop: '0.5rem' }} />
+          </div>
+          <div>
+            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '700' }}>REFERÊNCIAS DE FRAMEWORKS (opcional)</label>
+            <input value={newQuest.framework_refs_raw} onChange={e => setNewQuest({ ...newQuest, framework_refs_raw: e.target.value })} placeholder="Ex: COBIT:APO13, ISO27001:A.8.8, ITIL:Incident-Management" style={{ marginBottom: 0, marginTop: '0.5rem' }} />
           </div>
           <div style={{ display: 'flex', gap: '0.5rem' }}>
             <button className="btn-primary" onClick={() => handleCreateQuest()} style={{ padding: '0.9rem 1rem' }}><Icon name="plus" size={20} color="#00363d" /></button>
@@ -431,12 +439,21 @@ const EvaluatorQuestions = () => {
                 <div className="subgroup-title"><Icon name="stats" size={16} color="var(--text-muted)" /> {sub.name}</div>
                 <div className="questions-list">
                   {sub.questions.map(q => (
-                    <div key={q.id} className="question-row">
-                      <span style={{ fontSize: '0.95rem' }}>{q.text}</span>
-                      <div className="action-btns">
-                        <button className="icon-btn edit" onClick={() => handleEditQuest(q.id, q.text)}><Icon name="edit" size={18} /></button>
-                        <button className="icon-btn delete" onClick={() => handleDeleteQuest(q.id)}><Icon name="trash" size={18} /></button>
+                    <div key={q.id} className="question-row" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '0.4rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', width: '100%' }}>
+                        <span style={{ fontSize: '0.95rem', flex: 1 }}>{q.text}</span>
+                        <div className="action-btns">
+                          <button className="icon-btn edit" onClick={() => handleEditQuest(q.id, q.text)}><Icon name="edit" size={18} /></button>
+                          <button className="icon-btn delete" onClick={() => handleDeleteQuest(q.id)}><Icon name="trash" size={18} /></button>
+                        </div>
                       </div>
+                      {q.framework_refs?.length > 0 && (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem' }}>
+                          {q.framework_refs.map(ref => (
+                            <span key={ref} style={{ fontSize: '0.65rem', padding: '0.1rem 0.5rem', borderRadius: '4px', background: 'rgba(0,229,255,0.08)', color: 'var(--primary)', border: '1px solid rgba(0,229,255,0.15)' }}>{ref}</span>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   ))}
                   {sub.questions.length === 0 && <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', padding: '1rem' }}>Sem perguntas nesta seção.</p>}
@@ -825,15 +842,20 @@ const CompanyFeedbacks = ({ onViewFeedback }) => {
 };
 
 // ─── Company: Dashboard Home ───────────────────────────────────────────────────
-const CompanyHome = ({ onGoToInterviews, onGoToFeedbacks }) => {
+const CompanyHome = ({ onGoToInterviews, onGoToFeedbacks, onGoToProfile }) => {
   const [assessments, setAssessments] = useState([]);
   const [invites, setInvites] = useState([]);
+  const [profileIncomplete, setProfileIncomplete] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
     const headers = { Authorization: `Bearer ${token}` };
     axios.get(`${API_URL}/assessments/my/list?limit=100`, { headers }).then(r => setAssessments(r.data.items || [])).catch(() => {});
     axios.get(`${API_URL}/invites/my?limit=100`, { headers }).then(r => setInvites(r.data.items || [])).catch(() => {});
+    axios.get(`${API_URL}/users/me`, { headers }).then(r => {
+      const u = r.data;
+      setProfileIncomplete(!u.sector || !u.employee_count || !u.it_model);
+    }).catch(() => {});
   }, []);
 
   const pendingInvites = invites.filter(i => i.status === 'PENDING').length;
@@ -856,6 +878,21 @@ const CompanyHome = ({ onGoToInterviews, onGoToFeedbacks }) => {
           <h2 style={{ color: 'var(--primary)' }}>{assessments.length}</h2>
         </div>
       </div>
+
+      {profileIncomplete && (
+        <div className="glass-card" style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderColor: 'rgba(255,183,77,0.3)', background: 'rgba(255,183,77,0.05)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+            <Icon name="alert" size={18} color="var(--warning)" />
+            <div>
+              <p style={{ fontWeight: '700', color: 'var(--warning)', fontSize: '0.85rem' }}>PERFIL INCOMPLETO</p>
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Complete seu perfil organizacional para obter diagnósticos mais precisos.</p>
+            </div>
+          </div>
+          <button className="btn-secondary" onClick={onGoToProfile} style={{ fontSize: '0.8rem', padding: '0.6rem 1.2rem', color: 'var(--warning)', borderColor: 'rgba(255,183,77,0.4)' }}>
+            Completar Perfil
+          </button>
+        </div>
+      )}
 
       {lastAssessment?.has_feedback && (
         <div className="glass-card" style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -889,6 +926,110 @@ const CompanyHome = ({ onGoToInterviews, onGoToFeedbacks }) => {
   );
 };
 
+// ─── Company: Profile ─────────────────────────────────────────────────────────
+const CompanyProfile = () => {
+  const [profile, setProfile] = useState({ sector: '', employee_count: '', it_model: '', regulations: [] });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  const sectors = ['saúde', 'financeiro', 'educação', 'indústria', 'varejo', 'tecnologia', 'governo', 'outro'];
+  const employeeCounts = ['<50', '50-200', '200-1000', '>1000'];
+  const itModels = ['centralizado', 'descentralizado', 'terceirizado', 'híbrido'];
+  const allRegulations = ['LGPD', 'BACEN', 'ANS', 'ANATEL', 'ISO27001', 'SOX', 'PCI-DSS'];
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const res = await axios.get(`${API_URL}/users/me`, { headers: { Authorization: `Bearer ${token}` } });
+        const u = res.data;
+        let regs = [];
+        if (u.regulations) { try { regs = JSON.parse(u.regulations); } catch { regs = []; } }
+        setProfile({ sector: u.sector || '', employee_count: u.employee_count || '', it_model: u.it_model || '', regulations: regs });
+      } catch (err) { console.error(err); }
+      finally { setLoading(false); }
+    };
+    fetchProfile();
+  }, []);
+
+  const toggleReg = (reg) => {
+    setProfile(p => ({
+      ...p,
+      regulations: p.regulations.includes(reg) ? p.regulations.filter(r => r !== reg) : [...p.regulations, reg]
+    }));
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const token = localStorage.getItem('token');
+      await axios.put(`${API_URL}/users/me/profile`, {
+        sector: profile.sector || null,
+        employee_count: profile.employee_count || null,
+        it_model: profile.it_model || null,
+        regulations: JSON.stringify(profile.regulations),
+      }, { headers: { Authorization: `Bearer ${token}` } });
+      alert('Perfil salvo com sucesso!');
+    } catch (err) { alert('Erro ao salvar perfil.'); }
+    finally { setSaving(false); }
+  };
+
+  if (loading) return <div className="glass-card">Carregando perfil...</div>;
+
+  return (
+    <div className="fade-in">
+      <div className="glass-card" style={{ maxWidth: '640px' }}>
+        <h4 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+          <Icon name="user" color="var(--primary)" /> Perfil Organizacional
+        </h4>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
+          <div>
+            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '700' }}>SETOR</label>
+            <select value={profile.sector} onChange={e => setProfile({ ...profile, sector: e.target.value })} style={{ marginTop: '0.5rem' }}>
+              <option value="">Selecione...</option>
+              {sectors.map(s => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '700' }}>PORTE (Nº DE FUNCIONÁRIOS)</label>
+            <select value={profile.employee_count} onChange={e => setProfile({ ...profile, employee_count: e.target.value })} style={{ marginTop: '0.5rem' }}>
+              <option value="">Selecione...</option>
+              {employeeCounts.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '700' }}>MODELO DE TI</label>
+            <select value={profile.it_model} onChange={e => setProfile({ ...profile, it_model: e.target.value })} style={{ marginTop: '0.5rem' }}>
+              <option value="">Selecione...</option>
+              {itModels.map(s => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
+            </select>
+          </div>
+        </div>
+
+        <div style={{ marginBottom: '2rem' }}>
+          <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '700' }}>REGULAMENTAÇÕES APLICÁVEIS</label>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.6rem', marginTop: '0.8rem' }}>
+            {allRegulations.map(reg => (
+              <button key={reg}
+                onClick={() => toggleReg(reg)}
+                className={profile.regulations.includes(reg) ? 'btn-primary' : 'btn-secondary'}
+                style={{ padding: '0.4rem 0.9rem', fontSize: '0.8rem' }}>
+                {reg}
+                {profile.regulations.includes(reg) && <> ✓</>}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <button className="btn-primary" onClick={handleSave} disabled={saving}>
+          {saving ? <div className="loader" /> : <><Icon name="check" size={16} color="#00363d" /> Salvar Perfil</>}
+        </button>
+      </div>
+    </div>
+  );
+};
+
 // ─── Sidebar ──────────────────────────────────────────────────────────────────
 const Sidebar = ({ activeTab, setActiveTab, role, logout, open, onClose }) => {
   const menuItems = {
@@ -908,6 +1049,7 @@ const Sidebar = ({ activeTab, setActiveTab, role, logout, open, onClose }) => {
       { id: 'MAIN', label: 'Início', icon: 'home' },
       { id: 'interviews', label: 'Entrevistas', icon: 'chat' },
       { id: 'feedbacks', label: 'Meus Feedbacks', icon: 'report' },
+      { id: 'perfil', label: 'Perfil', icon: 'user' },
     ],
   };
   return (
@@ -945,7 +1087,7 @@ const TopNavbar = ({ user, activeTab, onMenuClick }) => {
   const labels = {
     MAIN: 'Painel Central', categories: 'Domínios e Estrutura', questions: 'Base de Conhecimento',
     invites: 'Entrevistas', interviews: 'Minhas Entrevistas', feedbacks: 'Meus Feedbacks',
-    settings: 'Configurações do AI Agent'
+    settings: 'Configurações do AI Agent', perfil: 'Perfil Organizacional'
   };
   return (
     <header className="top-navbar">
@@ -1082,6 +1224,7 @@ const Dashboard = () => {
             <CompanyHome
               onGoToInterviews={() => setActiveTab('interviews')}
               onGoToFeedbacks={() => setActiveTab('feedbacks')}
+              onGoToProfile={() => setActiveTab('perfil')}
             />
           )}
           {user?.role === 'COMPANY' && activeTab === 'interviews' && (
@@ -1090,6 +1233,7 @@ const Dashboard = () => {
           {user?.role === 'COMPANY' && activeTab === 'feedbacks' && (
             <CompanyFeedbacks key={`fb-${refreshKey}`} onViewFeedback={handleViewFeedback} />
           )}
+          {user?.role === 'COMPANY' && activeTab === 'perfil' && <CompanyProfile />}
         </main>
       </div>
     </div>

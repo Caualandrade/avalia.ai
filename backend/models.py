@@ -18,7 +18,12 @@ class User(Base):
     username = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
     role = Column(Enum(UserRole), default=UserRole.COMPANY)
-    company_name = Column(String, nullable=True) # Only for COMPANY role
+    company_name = Column(String, nullable=True)
+    # M01 — perfil organizacional (apenas role=COMPANY)
+    sector         = Column(String, nullable=True)
+    employee_count = Column(String, nullable=True)
+    it_model       = Column(String, nullable=True)
+    regulations    = Column(Text,   nullable=True)  # JSON array: ["LGPD", "BACEN"]
 
     # Relationships
     assessments = relationship("Assessment", back_populates="company", foreign_keys="Assessment.company_id")
@@ -52,6 +57,7 @@ class Question(Base):
     id = Column(Integer, primary_key=True, index=True)
     text = Column(Text, nullable=False)
     subcategory_id = Column(Integer, ForeignKey("subcategories.id"))
+    framework_refs = Column(Text, nullable=True)  # M02 — JSON: ["COBIT:APO13", "ISO27001:A.8.8"]
     
     subcategory = relationship("Subcategory", back_populates="questions")
     responses = relationship("Response", back_populates="question")
@@ -180,6 +186,8 @@ class AIFeedback(Base):
     category_scores = Column(Text)          # JSON dict {cat_name: score}
     score_geral = Column(Float, default=0.0)
     nivel = Column(String, default="")
+    nivel_numerico = Column(Integer, default=0)   # M03 — escala 0–5
+    coverage_map   = Column(Text, nullable=True)  # M02 — JSON: {"COBIT": 4, "ITIL": 2}
     generated_at = Column(DateTime(timezone=True), server_default=func.now())
 
     assessment = relationship("Assessment", back_populates="feedback")

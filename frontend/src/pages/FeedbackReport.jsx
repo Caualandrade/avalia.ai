@@ -195,10 +195,44 @@ const FeedbackReport = ({ assessmentId, onBack }) => {
             <Icon name="star" size={16} color="var(--primary)" />
             <span>{feedback.nivel}</span>
           </div>
+          {feedback.nivel_numerico !== undefined && (
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(0,229,255,0.08)', border: '1px solid rgba(0,229,255,0.2)', borderRadius: '8px', padding: '0.35rem 0.75rem', marginTop: '0.5rem', marginBottom: '0.25rem' }}>
+              <Icon name="chart" size={14} color="var(--primary)" />
+              <span style={{ fontSize: '0.8rem', color: 'var(--primary)', fontWeight: '700' }}>
+                Nível COBIT/CMMI: {feedback.nivel_numerico} / 5
+              </span>
+            </div>
+          )}
           <h1 className="fb-hero-score">{Math.round(feedback.score_geral)}%</h1>
           <p className="fb-hero-label">Score de Maturidade de TI</p>
         </div>
-        <ScoreGauge score={feedback.score_geral} />
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem' }}>
+          <ScoreGauge score={feedback.score_geral} />
+          <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap', justifyContent: 'center', maxWidth: '260px' }}>
+            {[
+              { n: 0, label: 'Caótico' },
+              { n: 1, label: 'Inicial' },
+              { n: 2, label: 'Definido' },
+              { n: 3, label: 'Gerenciado' },
+              { n: 4, label: 'Otimizando' },
+              { n: 5, label: 'Excelência' },
+            ].map(({ n, label }) => {
+              const isCurrent = feedback.nivel_numerico === n;
+              return (
+                <span key={n} style={{
+                  fontSize: '0.65rem', padding: '0.15rem 0.4rem', borderRadius: '4px',
+                  background: isCurrent ? 'var(--primary)' : 'rgba(255,255,255,0.06)',
+                  color: isCurrent ? '#000' : 'rgba(255,255,255,0.4)',
+                  fontWeight: isCurrent ? '700' : '400',
+                  border: isCurrent ? 'none' : '1px solid rgba(255,255,255,0.08)',
+                  transition: 'all 0.3s',
+                }}>
+                  {n} {label}
+                </span>
+              );
+            })}
+          </div>
+        </div>
       </div>
 
       {/* Summary */}
@@ -253,6 +287,34 @@ const FeedbackReport = ({ assessmentId, onBack }) => {
             {Object.entries(categoryScores).map(([name, score]) => (
               <CategoryBar key={name} name={name} score={score} />
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Framework Coverage Map */}
+      {feedback.coverage_map && Object.keys(feedback.coverage_map).length > 0 && (
+        <div className="glass-card fb-section">
+          <div className="fb-section-title">
+            <Icon name="check" size={18} color="var(--primary)" />
+            <h3>Cobertura de Frameworks</h3>
+          </div>
+          <div className="fb-cats">
+            {Object.entries(feedback.coverage_map).map(([framework, count]) => {
+              const maxMap = { COBIT: 40, ITIL: 34, 'ISO27001': 93 };
+              const max = maxMap[framework] || Math.max(...Object.values(feedback.coverage_map));
+              const pct = Math.min((count / max) * 100, 100);
+              return (
+                <div key={framework} className="fb-cat-row">
+                  <div className="fb-cat-header">
+                    <span className="fb-cat-name">{framework}</span>
+                    <span className="fb-cat-score" style={{ color: 'var(--primary)' }}>{count} objetivo{count !== 1 ? 's' : ''} coberto{count !== 1 ? 's' : ''}</span>
+                  </div>
+                  <div className="fb-cat-track">
+                    <div className="fb-cat-fill" style={{ width: `${pct}%`, background: 'var(--primary)' }} />
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}

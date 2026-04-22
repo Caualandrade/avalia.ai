@@ -25,20 +25,93 @@ def seed():
         print("Admin user created")
 
     # 2. Base Categories/Subcategories/Questions
-    # Categorias base conforme documento
-    if not db.query(models.Category).first():
-        cat1 = models.Category(name="Governança de TI", weight=1.5)
-        db.add(cat1)
-        db.commit() # Commit to get ID
-
-        sub1 = models.Subcategory(name="Governança Corporativa", category_id=cat1.id, weight=1.2)
-        db.add(sub1)
+    # M04 — separar Governança Corporativa de TI de Gestão de TI
+    if not db.query(models.Category).filter(models.Category.name == "Governança Corporativa de TI").first():
+        cat_gov = models.Category(name="Governança Corporativa de TI", weight=1.5)
+        db.add(cat_gov)
         db.commit()
 
-        q1 = models.Question(text="O conselho de administração possui participação ativa nas decisões de TI?", subcategory_id=sub1.id)
-        q2 = models.Question(text="Existe um comitê de auditoria que supervisiona os riscos tecnológicos?", subcategory_id=sub1.id)
-        db.add_all([q1, q2])
+        sub_gov1 = models.Subcategory(name="Estratégia e Alinhamento", category_id=cat_gov.id, weight=1.2)
+        db.add(sub_gov1)
+        db.commit()
 
+        db.add_all([
+            models.Question(
+                text="O conselho de administração possui participação ativa nas decisões de TI?",
+                subcategory_id=sub_gov1.id,
+                framework_refs='["COBIT:EDM01", "COBIT:APO02"]'
+            ),
+            models.Question(
+                text="Existe um comitê de TI com representantes da diretoria que define prioridades e investimentos?",
+                subcategory_id=sub_gov1.id,
+                framework_refs='["COBIT:EDM01", "COBIT:APO02"]'
+            ),
+            models.Question(
+                text="Os investimentos em TI são vinculados formalmente às metas estratégicas de negócio (ROI, OKRs)?",
+                subcategory_id=sub_gov1.id,
+                framework_refs='["COBIT:APO05", "COBIT:EDM02"]'
+            ),
+        ])
+
+        sub_gov2 = models.Subcategory(name="Conformidade e Risco Corporativo", category_id=cat_gov.id, weight=1.2)
+        db.add(sub_gov2)
+        db.commit()
+
+        db.add_all([
+            models.Question(
+                text="Existe um comitê de auditoria que supervisiona os riscos tecnológicos e de segurança?",
+                subcategory_id=sub_gov2.id,
+                framework_refs='["COBIT:EDM03", "ISO27001:A.5.35"]'
+            ),
+            models.Question(
+                text="A organização possui uma política formal de gestão de riscos de TI aprovada pela diretoria?",
+                subcategory_id=sub_gov2.id,
+                framework_refs='["COBIT:APO12", "ISO27001:6.1"]'
+            ),
+        ])
+        print("Categoria 'Governança Corporativa de TI' criada")
+
+    if not db.query(models.Category).filter(models.Category.name == "Gestão de TI").first():
+        cat_mgmt = models.Category(name="Gestão de TI", weight=1.2)
+        db.add(cat_mgmt)
+        db.commit()
+
+        sub_mgmt1 = models.Subcategory(name="Processos e Projetos", category_id=cat_mgmt.id, weight=1.0)
+        db.add(sub_mgmt1)
+        db.commit()
+
+        db.add_all([
+            models.Question(
+                text="A TI utiliza alguma metodologia formal de gestão de projetos (PMO, Scrum, SAFe)?",
+                subcategory_id=sub_mgmt1.id,
+                framework_refs='["COBIT:BAI01", "COBIT:APO03"]'
+            ),
+            models.Question(
+                text="O orçamento de TI é planejado anualmente com base em metas e riscos identificados?",
+                subcategory_id=sub_mgmt1.id,
+                framework_refs='["COBIT:APO06"]'
+            ),
+        ])
+
+        sub_mgmt2 = models.Subcategory(name="Fornecedores e Contratos", category_id=cat_mgmt.id, weight=1.0)
+        db.add(sub_mgmt2)
+        db.commit()
+
+        db.add_all([
+            models.Question(
+                text="Existe um processo formal de gestão de fornecedores de TI, incluindo SLAs e avaliações periódicas?",
+                subcategory_id=sub_mgmt2.id,
+                framework_refs='["COBIT:APO10", "ITIL:Supplier-Management"]'
+            ),
+            models.Question(
+                text="Os contratos com fornecedores de TI incluem cláusulas de segurança, privacidade e continuidade?",
+                subcategory_id=sub_mgmt2.id,
+                framework_refs='["COBIT:APO10", "ISO27001:A.5.19"]'
+            ),
+        ])
+        print("Categoria 'Gestão de TI' criada")
+
+    if not db.query(models.Category).filter(models.Category.name == "Gestão de Serviços (ITIL)").first():
         cat2 = models.Category(name="Gestão de Serviços (ITIL)", weight=1.0)
         db.add(cat2)
         db.commit()
@@ -47,10 +120,12 @@ def seed():
         db.add(sub2)
         db.commit()
 
-        q3 = models.Question(text="Existe um catálogo de serviços de TI formalizado?", subcategory_id=sub2.id)
-        db.add(q3)
-        
-        print("Seed data created")
+        db.add(models.Question(
+            text="Existe um catálogo de serviços de TI formalizado e disponível para os usuários?",
+            subcategory_id=sub2.id,
+            framework_refs='["ITIL:Service-Catalogue-Management"]'
+        ))
+        print("Categoria 'Gestão de Serviços (ITIL)' criada")
     
     db.commit()
     db.close()

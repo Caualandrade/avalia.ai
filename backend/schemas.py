@@ -1,6 +1,7 @@
-from pydantic import BaseModel, EmailStr
-from typing import List, Optional, TypeVar, Generic
+from pydantic import BaseModel, EmailStr, field_validator
+from typing import List, Optional, TypeVar, Generic, Any
 from datetime import datetime
+import json as _json
 from models import UserRole, AssessmentStatus, InterviewMode, InterviewInviteStatus
 
 T = TypeVar('T')
@@ -32,8 +33,18 @@ class UserResponse(BaseModel):
     username: str
     role: UserRole
     company_name: Optional[str] = None
+    sector: Optional[str] = None
+    employee_count: Optional[str] = None
+    it_model: Optional[str] = None
+    regulations: Optional[str] = None  # JSON string
     class Config:
         from_attributes = True
+
+class UserProfileUpdate(BaseModel):
+    sector: Optional[str] = None
+    employee_count: Optional[str] = None
+    it_model: Optional[str] = None
+    regulations: Optional[str] = None  # JSON string: '["LGPD","BACEN"]'
 
 # ─── Question/Category Schemas ────────────────────────────────────────────────
 class QuestionBase(BaseModel):
@@ -41,13 +52,27 @@ class QuestionBase(BaseModel):
 
 class QuestionCreate(QuestionBase):
     subcategory_id: int
+    framework_refs: Optional[List[str]] = None
 
 class QuestionUpdate(BaseModel):
     text: str
+    framework_refs: Optional[List[str]] = None
 
 class QuestionResponse(QuestionBase):
     id: int
     subcategory_id: int
+    framework_refs: Optional[List[str]] = None
+
+    @field_validator("framework_refs", mode="before")
+    @classmethod
+    def parse_framework_refs(cls, v: Any) -> Optional[List[str]]:
+        if isinstance(v, str):
+            try:
+                return _json.loads(v)
+            except Exception:
+                return None
+        return v
+
     class Config:
         from_attributes = True
 
@@ -193,6 +218,8 @@ class AIFeedbackResponse(BaseModel):
     category_scores: dict
     score_geral: float
     nivel: str
+    nivel_numerico: int = 0
+    coverage_map: Optional[dict] = None
     generated_at: datetime
     class Config:
         from_attributes = True

@@ -21,7 +21,8 @@ const Login = () => {
   return (
     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', padding: '1rem', background: 'radial-gradient(circle at top right, #1e293b, #0f172a)' }}>
       <div className="glass-card fade-in" style={{ width: '100%', maxWidth: '400px' }}>
-        <h2 style={{ marginBottom: '0.5rem', textAlign: 'center' }}>Avalia.AI</h2>
+        <h2 style={{ marginBottom: '0.25rem', textAlign: 'center' }}>Avalia.AI</h2>
+        <p style={{ color: 'var(--primary)', textAlign: 'center', fontSize: '0.7rem', fontWeight: '700', letterSpacing: '0.1em', marginBottom: '0.5rem' }}>v2.0</p>
         <p style={{ color: 'var(--text-muted)', textAlign: 'center', marginBottom: '2rem' }}>Acesse sua conta para continuar</p>
         
         {error && <p style={{ color: 'var(--danger)', textAlign: 'center', marginBottom: '1rem' }}>{error}</p>}
