@@ -220,9 +220,51 @@ class AIFeedbackResponse(BaseModel):
     nivel: str
     nivel_numerico: int = 0
     coverage_map: Optional[dict] = None
+    findings: Optional[List[dict]] = None
+    action_plan_90d: Optional[dict] = None
+    framework_diagnoses: Optional[List[dict]] = None
+    kpi_indicators: Optional[List[dict]] = None
+    critical_findings_count: int = 0
     generated_at: datetime
     class Config:
         from_attributes = True
+
+# ─── Report Schemas ───────────────────────────────────────────────────────────
+
+class ReportCompany(BaseModel):
+    name: str
+    sector: Optional[str] = None
+    employee_count: Optional[str] = None
+    it_model: Optional[str] = None
+    regulations: Optional[List[str]] = None
+
+class ReportEvaluator(BaseModel):
+    name: str
+
+class ReportCategoryScore(BaseModel):
+    name: str
+    framework: str
+    score: float
+
+class ReportResponse(BaseModel):
+    assessment_id: int
+    generated_at: datetime
+    company: ReportCompany
+    evaluator: Optional[ReportEvaluator] = None
+    score_geral: float
+    nivel: str
+    nivel_numerico: int
+    nivel_descricao: str
+    overall_summary: str
+    strengths: List[str]
+    weaknesses: List[str]
+    recommendations: List[dict]
+    category_scores_enriched: List[ReportCategoryScore]
+    findings: List[dict]
+    critical_findings_count: int
+    action_plan_90d: dict
+    framework_diagnoses: List[dict]
+    kpi_indicators: List[dict]
 
 # ─── Manual Form Schemas ──────────────────────────────────────────────────────
 class FormSubmitItem(BaseModel):

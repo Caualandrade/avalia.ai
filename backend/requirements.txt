@@ -12,3 +12,5 @@ openai
 langchain
 langchain-openai
 websockets
+weasyprint
+jinja2

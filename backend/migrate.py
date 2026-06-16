@@ -29,6 +29,12 @@ def run_migration():
         ("ALTER TABLE ai_feedbacks ADD COLUMN IF NOT EXISTS coverage_map TEXT", "coverage_map em ai_feedbacks"),
         # M03 — nível numérico 0–5
         ("ALTER TABLE ai_feedbacks ADD COLUMN IF NOT EXISTS nivel_numerico INTEGER DEFAULT 0", "nivel_numerico em ai_feedbacks"),
+        # Relatório — campos adicionais
+        ("ALTER TABLE ai_feedbacks ADD COLUMN IF NOT EXISTS findings TEXT", "findings em ai_feedbacks"),
+        ("ALTER TABLE ai_feedbacks ADD COLUMN IF NOT EXISTS action_plan_90d TEXT", "action_plan_90d em ai_feedbacks"),
+        ("ALTER TABLE ai_feedbacks ADD COLUMN IF NOT EXISTS framework_diagnoses TEXT", "framework_diagnoses em ai_feedbacks"),
+        ("ALTER TABLE ai_feedbacks ADD COLUMN IF NOT EXISTS kpi_indicators TEXT", "kpi_indicators em ai_feedbacks"),
+        ("ALTER TABLE ai_feedbacks ADD COLUMN IF NOT EXISTS critical_findings_count INTEGER DEFAULT 0", "critical_findings_count em ai_feedbacks"),
     ]
 
     with engine.begin() as conn:

@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Diagnóstico de Maturidade de TI — {{ company.name }}</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: Liberation Sans, Arial, sans-serif;
+    font-size: 10pt;
+    color: #1a1a2e;
+    background: #fff;
+    line-height: 1.5;
+  }
+
+  /* ── Cabeçalho ─────────────────────────────────────────── */
+  .header {
+    background: #0a1628;
+    color: #fff;
+    padding: 28px 36px 24px;
+    page-break-inside: avoid;
+  }
+  .header-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 24px;
+  }
+  .header-brand {
+    font-size: 9pt;
+    font-weight: bold;
+    letter-spacing: 2px;
+    color: #00e5ff;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .header-company {
+    font-size: 22pt;
+    font-weight: bold;
+    letter-spacing: -0.5px;
+    line-height: 1.1;
+    color: #fff;
+    margin-bottom: 8px;
+  }
+  .header-meta {
+    font-size: 8.5pt;
+    color: rgba(255,255,255,0.55);
+    margin-top: 6px;
+  }
+  .header-meta strong { color: rgba(255,255,255,0.8); }
+
+  .pills { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+  .pill {
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 7.5pt;
+    font-weight: bold;
+    background: rgba(255,255,255,0.1);
+    color: rgba(255,255,255,0.7);
+    border: 1px solid rgba(255,255,255,0.15);
+  }
+  .pill-accent {
+    background: rgba(0,229,255,0.12);
+    border-color: rgba(0,229,255,0.3);
+    color: #00e5ff;
+  }
+
+  /* Score box */
+  .score-box {
+    text-align: center;
+    min-width: 130px;
+    flex-shrink: 0;
+  }
+  .score-circle {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    border: 8px solid {{ score_color }};
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 8px;
+    box-shadow: 0 0 20px {{ score_color }}40;
+  }
+  .score-number {
+    font-size: 22pt;
+    font-weight: 900;
+    color: {{ score_color }};
+    line-height: 1;
+  }
+  .score-label { font-size: 7pt; color: rgba(255,255,255,0.4); }
+  .nivel-badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 5px;
+    font-size: 8pt;
+    font-weight: 800;
+    background: {{ score_color }}20;
+    border: 1px solid {{ score_color }}50;
+    color: {{ score_color }};
+    white-space: nowrap;
+  }
+
+  /* Badge strip */
+  .badge-strip {
+    display: flex;
+    border-top: 1px solid rgba(255,255,255,0.1);
+    margin-top: 18px;
+    padding-top: 14px;
+    gap: 0;
+  }
+  .badge-item { flex: 1; text-align: center; }
+  .badge-item + .badge-item { border-left: 1px solid rgba(255,255,255,0.1); }
+  .badge-value { font-size: 18pt; font-weight: 900; line-height: 1; }
+  .badge-label { font-size: 7pt; color: rgba(255,255,255,0.4); margin-top: 3px; }
+
+  /* Resumo */
+  .summary-box {
+    margin-top: 14px;
+    padding: 10px 14px;
+    background: rgba(0,229,255,0.06);
+    border-left: 3px solid #00e5ff;
+    border-radius: 0 4px 4px 0;
+    font-size: 8.5pt;
+    color: rgba(255,255,255,0.65);
+    line-height: 1.6;
+  }
+
+  /* ── Seções ─────────────────────────────────────────────── */
+  .page-body { padding: 24px 36px; }
+
+  .section {
+    margin-bottom: 20px;
+    page-break-inside: avoid;
+    border: 1px solid #e8ecf0;
+    border-radius: 8px;
+    padding: 16px 18px;
+    background: #fafbfc;
+  }
+  .section-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .section-accent {
+    width: 3px;
+    height: 18px;
+    border-radius: 2px;
+    background: #0066cc;
+    flex-shrink: 0;
+  }
+  .section-title h2 {
+    font-size: 10.5pt;
+    font-weight: 800;
+    color: #0a1628;
+    letter-spacing: -0.2px;
+  }
+
+  /* ── Scores por Categoria ─────────────────────────────── */
+  .cat-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 0;
+    border-bottom: 1px solid #eef0f3;
+  }
+  .cat-row:last-child { border-bottom: none; }
+  .cat-name { flex: 1; font-size: 9pt; font-weight: 600; color: #1a1a2e; }
+  .cat-fw { font-size: 7.5pt; color: #888; min-width: 80px; }
+  .cat-bar-wrap { width: 160px; height: 7px; background: #eef0f3; border-radius: 3px; overflow: hidden; }
+  .cat-bar { height: 100%; border-radius: 3px; }
+  .cat-pct { font-size: 9.5pt; font-weight: 800; min-width: 36px; text-align: right; }
+  .tag {
+    font-size: 6.5pt;
+    font-weight: 800;
+    padding: 2px 5px;
+    border-radius: 3px;
+    letter-spacing: 0.3px;
+  }
+
+  /* ── KPIs ─────────────────────────────────────────────── */
+  table { width: 100%; border-collapse: collapse; font-size: 8.5pt; }
+  thead tr { background: #f0f4f8; }
+  th {
+    padding: 6px 10px;
+    text-align: left;
+    font-size: 7.5pt;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #555;
+    border-bottom: 2px solid #dde2e8;
+  }
+  td {
+    padding: 7px 10px;
+    border-bottom: 1px solid #eef0f3;
+    color: #2a2a3e;
+  }
+  tr:last-child td { border-bottom: none; }
+  tr:nth-child(even) td { background: #f8fafc; }
+
+  .kpi-status {
+    display: inline-block;
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-size: 7pt;
+    font-weight: 800;
+    letter-spacing: 0.3px;
+  }
+  .kpi-abaixo { background: #fff0f0; border: 1px solid #ffc0c0; color: #cc2222; }
+  .kpi-ok     { background: #f0fff5; border: 1px solid #90e8b0; color: #1a7a3a; }
+  .kpi-acima  { background: #f0f8ff; border: 1px solid #90c0f0; color: #1a4a8a; }
+
+  /* ── Achados ───────────────────────────────────────────── */
+  .finding-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 7px 0;
+    border-bottom: 1px solid #eef0f3;
+  }
+  .finding-row:last-child { border-bottom: none; }
+  .badge-sev {
+    display: inline-block;
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-size: 7pt;
+    font-weight: 800;
+    letter-spacing: 0.3px;
+    white-space: nowrap;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+  .sev-critico { background: #fff0f0; border: 1px solid #ffc0c0; color: #cc0000; }
+  .sev-alto    { background: #fff6ec; border: 1px solid #ffcc80; color: #cc5500; }
+  .sev-medio   { background: #fffbec; border: 1px solid #ffe082; color: #886600; }
+  .sev-baixo   { background: #f0fff5; border: 1px solid #90e8b0; color: #1a7a3a; }
+  .finding-text { font-size: 8.5pt; color: #2a2a3e; line-height: 1.5; }
+
+  /* ── Plano 90 dias ─────────────────────────────────────── */
+  .plan-grid { display: flex; gap: 10px; }
+  .plan-col { flex: 1; border-radius: 6px; overflow: hidden; border: 1px solid #eef0f3; }
+  .plan-header { padding: 7px 10px; font-size: 8pt; font-weight: 800; }
+  .plan-body { padding: 8px 10px; }
+  .plan-item {
+    display: flex;
+    gap: 5px;
+    font-size: 8pt;
+    color: #3a3a5e;
+    padding: 3px 0;
+    line-height: 1.4;
+  }
+  .plan-bullet { font-weight: 900; flex-shrink: 0; }
+
+  .col-0-15  .plan-header { background: #fff0f0; color: #cc2222; border-bottom: 2px solid #ffc0c0; }
+  .col-15-45 .plan-header { background: #fff8ec; color: #cc5500; border-bottom: 2px solid #ffcc80; }
+  .col-45-90 .plan-header { background: #f0fff5; color: #1a7a3a; border-bottom: 2px solid #90e8b0; }
+
+  /* ── Framework diagnoses ───────────────────────────────── */
+  .fw-grid { display: flex; flex-wrap: wrap; gap: 10px; }
+  .fw-card {
+    flex: 1;
+    min-width: 180px;
+    border: 1px solid #e0e4ea;
+    border-radius: 6px;
+    padding: 10px 12px;
+    background: #fafbfc;
+  }
+  .fw-name { font-size: 9pt; font-weight: 800; color: #0a1628; margin-bottom: 5px; }
+  .fw-level-badge {
+    display: inline-block;
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-size: 7pt;
+    font-weight: 800;
+    margin-bottom: 6px;
+  }
+  .fw-dots { display: flex; gap: 3px; margin-bottom: 6px; }
+  .fw-dot { flex: 1; height: 3px; border-radius: 2px; }
+  .fw-desc { font-size: 8pt; color: #555; line-height: 1.5; }
+
+  /* ── Pontos fortes / oportunidades ─────────────────────── */
+  .sw-grid { display: flex; gap: 12px; }
+  .sw-col { flex: 1; }
+  .sw-item {
+    display: flex;
+    gap: 6px;
+    font-size: 8.5pt;
+    color: #2a2a3e;
+    padding: 4px 0;
+    border-bottom: 1px solid #eef0f3;
+    line-height: 1.4;
+  }
+  .sw-item:last-child { border-bottom: none; }
+  .sw-icon { font-weight: 900; flex-shrink: 0; line-height: 1.5; }
+
+  /* ── Recomendações ─────────────────────────────────────── */
+  .rec-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+  .rec-card {
+    flex: 1;
+    min-width: 160px;
+    border: 1px solid #e0e4ea;
+    border-radius: 6px;
+    padding: 9px 11px;
+    background: #fafbfc;
+  }
+  .rec-prio { font-size: 7pt; font-weight: 800; letter-spacing: 0.5px; margin-bottom: 4px; }
+  .rec-title { font-size: 8.5pt; font-weight: 700; color: #0a1628; margin-bottom: 3px; line-height: 1.3; }
+  .rec-desc { font-size: 7.5pt; color: #666; line-height: 1.4; }
+
+  /* ── Rodapé ─────────────────────────────────────────────── */
+  .footer {
+    text-align: center;
+    padding: 12px 36px;
+    font-size: 7.5pt;
+    color: #aaa;
+    border-top: 1px solid #eef0f3;
+    margin-top: 4px;
+  }
+
+  /* ── Page breaks ─────────────────────────────────────── */
+  @page {
+    size: A4;
+    margin: 0;
+  }
+  .page-break { page-break-before: always; }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════
+     SEÇÃO 1 — CABEÇALHO
+══════════════════════════════════════════════════════ -->
+<div class="header">
+  <div class="header-top">
+    <div style="flex:1">
+      <div class="header-brand">Avalia.AI — Diagnóstico de Maturidade de TI</div>
+      <div class="header-company">{{ company.name }}</div>
+      <div class="pills">
+        {% if company.sector %}<span class="pill">{{ company.sector | capitalize }}</span>{% endif %}
+        {% if company.employee_count %}<span class="pill">{{ company.employee_count }} funcionários</span>{% endif %}
+        {% if company.it_model %}<span class="pill">TI {{ company.it_model }}</span>{% endif %}
+        {% for reg in (company.regulations or []) %}<span class="pill pill-accent">{{ reg }}</span>{% endfor %}
+      </div>
+      <div class="header-meta" style="margin-top:10px">
+        {% if evaluator %}<span>Avaliador: <strong>{{ evaluator.name }}</strong> &nbsp;·&nbsp; </span>{% endif %}
+        <span>Gerado em {{ generated_at_fmt }}</span>
+      </div>
+    </div>
+    <div class="score-box">
+      <div class="score-circle">
+        <div>
+          <div class="score-number">{{ score_geral | round | int }}%</div>
+          <div class="score-label">score</div>
+        </div>
+      </div>
+      <div class="nivel-badge">Nível {{ nivel_numerico }}/5 — {{ nivel }}</div>
+      <div style="font-size:7pt; color:rgba(255,255,255,0.35); margin-top:5px; max-width:120px; text-align:center; line-height:1.3">{{ nivel_descricao }}</div>
+    </div>
+  </div>
+
+  <div class="badge-strip">
+    <div class="badge-item">
+      <div class="badge-value" style="color:#00e5ff">{{ category_scores_enriched | length }}</div>
+      <div class="badge-label">Domínios Avaliados</div>
+    </div>
+    <div class="badge-item">
+      <div class="badge-value" style="color:{% if critical_findings_count > 0 %}#ff5252{% else %}#00e676{% endif %}">{{ critical_findings_count }}</div>
+      <div class="badge-label">Achados Críticos</div>
+    </div>
+    <div class="badge-item">
+      <div class="badge-value" style="color:#ffb74d">{{ findings | length }}</div>
+      <div class="badge-label">Total de Achados</div>
+    </div>
+    <div class="badge-item">
+      <div class="badge-value" style="color:#00e676">{{ kpi_indicators | length }}</div>
+      <div class="badge-label">Indicadores KPI</div>
+    </div>
+  </div>
+
+  <div class="summary-box">{{ overall_summary }}</div>
+</div>
+
+<div class="page-body">
+
+<!-- ══════════════════════════════════════════════════════
+     SEÇÃO 2 — SCORES POR DOMÍNIO
+══════════════════════════════════════════════════════ -->
+{% if category_scores_enriched %}
+<div class="section">
+  <div class="section-title">
+    <div class="section-accent" style="background:#0066cc"></div>
+    <h2>Scores por Domínio</h2>
+  </div>
+  {% for cat in category_scores_enriched %}
+  {% set sc = cat.score %}
+  {% set c = '#1a7a3a' if sc >= 80 else '#0066cc' if sc >= 60 else '#cc5500' if sc >= 40 else '#cc0000' %}
+  {% set tag = 'EXCELENTE' if sc >= 80 else 'BOM' if sc >= 60 else 'REGULAR' if sc >= 40 else 'CRÍTICO' %}
+  <div class="cat-row">
+    <div class="cat-name">{{ cat.name }}</div>
+    <div class="cat-fw">{{ cat.framework }}</div>
+    <div class="cat-bar-wrap"><div class="cat-bar" style="width:{{ sc | round | int }}%; background:{{ c }}"></div></div>
+    <div class="cat-pct" style="color:{{ c }}">{{ sc | round | int }}%</div>
+    <div class="tag" style="background:{{ c }}15; border:1px solid {{ c }}40; color:{{ c }}">{{ tag }}</div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<!-- ══════════════════════════════════════════════════════
+     SEÇÃO 3 — INDICADORES OPERACIONAIS
+══════════════════════════════════════════════════════ -->
+{% if kpi_indicators %}
+<div class="section">
+  <div class="section-title">
+    <div class="section-accent" style="background:#cc5500"></div>
+    <h2>Indicadores Operacionais</h2>
+  </div>
+  <table>
+    <thead><tr><th>Indicador</th><th>Valor Atual</th><th>Benchmark</th><th>Status</th></tr></thead>
+    <tbody>
+    {% for kpi in kpi_indicators %}
+    <tr>
+      <td style="font-weight:600">{{ kpi.name }}</td>
+      <td>{{ kpi.current }}</td>
+      <td style="color:#888">{{ kpi.benchmark }}</td>
+      <td>
+        <span class="kpi-status {% if kpi.status == 'ABAIXO' %}kpi-abaixo{% elif kpi.status == 'ACIMA' %}kpi-acima{% else %}kpi-ok{% endif %}">
+          {{ kpi.status }}
+        </span>
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+<!-- ══════════════════════════════════════════════════════
+     SEÇÃO 4 — ACHADOS E VULNERABILIDADES
+══════════════════════════════════════════════════════ -->
+{% if findings %}
+<div class="section">
+  <div class="section-title">
+    <div class="section-accent" style="background:#cc0000"></div>
+    <h2>Achados e Vulnerabilidades</h2>
+  </div>
+  {% for f in findings %}
+  {% set sev_cls = 'sev-critico' if f.severity == 'CRÍTICO' else 'sev-alto' if f.severity == 'ALTO' else 'sev-medio' if f.severity == 'MÉDIO' else 'sev-baixo' %}
+  <div class="finding-row">
+    <span class="badge-sev {{ sev_cls }}">{{ f.severity }}</span>
+    <span class="finding-text">{{ f.description }}</span>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<!-- ══════════════════════════════════════════════════════
+     SEÇÃO 5 — PLANO DE AÇÃO 90 DIAS
+══════════════════════════════════════════════════════ -->
+{% if action_plan_90d %}
+<div class="section">
+  <div class="section-title">
+    <div class="section-accent" style="background:#1a7a3a"></div>
+    <h2>Plano de Ação — 90 Dias</h2>
+  </div>
+  <div class="plan-grid">
+    <div class="plan-col col-0-15">
+      <div class="plan-header">0 – 15 dias <span style="font-size:6.5pt;opacity:.7">Ações imediatas</span></div>
+      <div class="plan-body">
+        {% for item in (action_plan_90d.fase_0_15 or []) %}
+        <div class="plan-item"><span class="plan-bullet" style="color:#cc2222">›</span><span>{{ item }}</span></div>
+        {% endfor %}
+      </div>
+    </div>
+    <div class="plan-col col-15-45">
+      <div class="plan-header">15 – 45 dias <span style="font-size:6.5pt;opacity:.7">Implementações</span></div>
+      <div class="plan-body">
+        {% for item in (action_plan_90d.fase_15_45 or []) %}
+        <div class="plan-item"><span class="plan-bullet" style="color:#cc5500">›</span><span>{{ item }}</span></div>
+        {% endfor %}
+      </div>
+    </div>
+    <div class="plan-col col-45-90">
+      <div class="plan-header">45 – 90 dias <span style="font-size:6.5pt;opacity:.7">Consolidação</span></div>
+      <div class="plan-body">
+        {% for item in (action_plan_90d.fase_45_90 or []) %}
+        <div class="plan-item"><span class="plan-bullet" style="color:#1a7a3a">›</span><span>{{ item }}</span></div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- ══════════════════════════════════════════════════════
+     SEÇÃO 6 — DIAGNÓSTICO POR FRAMEWORK
+══════════════════════════════════════════════════════ -->
+{% if framework_diagnoses %}
+<div class="section">
+  <div class="section-title">
+    <div class="section-accent" style="background:#6600cc"></div>
+    <h2>Diagnóstico Consolidado por Framework</h2>
+  </div>
+  <div class="fw-grid">
+    {% for fw in framework_diagnoses %}
+    {% set lvl = fw.level_num if fw.level_num is not none else 0 %}
+    {% set fc = '#1a7a3a' if lvl >= 4 else '#0066cc' if lvl >= 3 else '#cc5500' if lvl >= 2 else '#cc0000' %}
+    <div class="fw-card">
+      <div class="fw-name">{{ fw.framework }}</div>
+      <div class="fw-level-badge" style="background:{{ fc }}15; border:1px solid {{ fc }}40; color:{{ fc }}">{{ fw.level }}</div>
+      <div class="fw-dots">
+        {% for n in range(6) %}
+        <div class="fw-dot" style="background:{% if n <= lvl %}{{ fc }}{% else %}#dde2e8{% endif %}"></div>
+        {% endfor %}
+      </div>
+      <div class="fw-desc">{{ fw.description }}</div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<!-- Pontos Fortes + Oportunidades -->
+{% if strengths or weaknesses %}
+<div class="section">
+  <div class="sw-grid">
+    {% if strengths %}
+    <div class="sw-col">
+      <div class="section-title" style="margin-bottom:8px">
+        <div class="section-accent" style="background:#1a7a3a"></div>
+        <h2>Pontos Fortes</h2>
+      </div>
+      {% for s in strengths %}
+      <div class="sw-item"><span class="sw-icon" style="color:#1a7a3a">✓</span><span>{{ s }}</span></div>
+      {% endfor %}
+    </div>
+    {% endif %}
+    {% if weaknesses %}
+    <div class="sw-col">
+      <div class="section-title" style="margin-bottom:8px">
+        <div class="section-accent" style="background:#cc5500"></div>
+        <h2>Oportunidades de Melhoria</h2>
+      </div>
+      {% for w in weaknesses %}
+      <div class="sw-item"><span class="sw-icon" style="color:#cc5500">!</span><span>{{ w }}</span></div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+<!-- Recomendações -->
+{% if recommendations %}
+<div class="section">
+  <div class="section-title">
+    <div class="section-accent" style="background:#cc5500"></div>
+    <h2>Recomendações Estratégicas</h2>
+  </div>
+  <div class="rec-grid">
+    {% for rec in recommendations %}
+    {% set title = rec.title if rec.title is defined else rec.action if rec.action is defined else rec.area if rec.area is defined else 'Recomendação' %}
+    {% set desc  = rec.description if rec.description is defined else '' %}
+    {% set prio  = rec.priority if rec.priority is defined else '' %}
+    {% set pc = '#cc0000' if prio in ['alta','alto'] else '#cc5500' if prio in ['média','medio','médio'] else '#0066cc' %}
+    <div class="rec-card">
+      {% if prio %}<div class="rec-prio" style="color:{{ pc }}">PRIORIDADE {{ prio | upper }}</div>{% endif %}
+      <div class="rec-title">{{ title }}</div>
+      {% if desc and desc != title %}<div class="rec-desc">{{ desc }}</div>{% endif %}
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+</div><!-- /page-body -->
+
+<div class="footer">
+  Relatório gerado automaticamente pela plataforma Avalia.AI &nbsp;·&nbsp;
+  Avaliação #{{ assessment_id }} &nbsp;·&nbsp;
+  {{ generated_at_fmt }}
+</div>
+
+</body>
+</html>

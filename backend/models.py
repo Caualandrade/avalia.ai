@@ -188,6 +188,12 @@ class AIFeedback(Base):
     nivel = Column(String, default="")
     nivel_numerico = Column(Integer, default=0)   # M03 — escala 0–5
     coverage_map   = Column(Text, nullable=True)  # M02 — JSON: {"COBIT": 4, "ITIL": 2}
+    # Relatório — campos adicionais
+    findings               = Column(Text, nullable=True)  # JSON: [{severity, description}]
+    action_plan_90d        = Column(Text, nullable=True)  # JSON: {fase_0_15, fase_15_45, fase_45_90}
+    framework_diagnoses    = Column(Text, nullable=True)  # JSON: [{framework, level, level_num, description}]
+    kpi_indicators         = Column(Text, nullable=True)  # JSON: [{name, current, benchmark, status}]
+    critical_findings_count = Column(Integer, default=0)
     generated_at = Column(DateTime(timezone=True), server_default=func.now())
 
     assessment = relationship("Assessment", back_populates="feedback")
