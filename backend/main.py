@@ -1,6 +1,8 @@
 from fastapi import FastAPI, Depends, HTTPException, status, WebSocket, WebSocketDisconnect, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.responses import Response
+from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session, joinedload
 from datetime import datetime, timedelta
 from typing import List, Optional
@@ -37,6 +39,7 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 # 24 hours
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+_templates = Jinja2Templates(directory=os.path.join(os.path.dirname(__file__), "templates"))
 
 # ─── Auth Utilities ──────────────────────────────────────────────────────────
 
@@ -859,16 +862,52 @@ async def _generate_and_save_feedback(assessment_id: int, db: Session):
                 except Exception:
                     pass
 
+        # Transcript legível para extração de KPIs pelo LLM
+        transcript_lines = []
+        for i, r in enumerate(responses_data, 1):
+            if r["question"] and r["answer"]:
+                transcript_lines.append(f"P{i}: {r['question']}")
+                transcript_lines.append(f"R{i}: {r['answer']}")
+        transcript = "\n".join(transcript_lines)
+
+        # Scores por categoria (agrupados pela pergunta da subcategoria)
+        cat_scores: dict[str, list[float]] = {}
+        for r in assessment.responses:
+            if r.score is None:
+                continue
+            if r.question and r.question.subcategory and r.question.subcategory.category:
+                cat_name = r.question.subcategory.category.name
+                cat_scores.setdefault(cat_name, []).append(r.score)
+        category_scores_calc = {
+            cat: round(sum(scores) / len(scores), 1)
+            for cat, scores in cat_scores.items()
+        }
+
+        # Perfil organizacional
+        comp = assessment.company
+        org_profile = {
+            "sector": comp.sector or "não informado",
+            "employee_count": comp.employee_count or "não informado",
+            "it_model": comp.it_model or "não informado",
+            "regulations": json.loads(comp.regulations) if comp.regulations else [],
+        }
+
         assessment_data = {
-            "company_name": assessment.company.company_name or assessment.company.username,
+            "company_name": comp.company_name or comp.username,
             "mode": assessment.mode,
             "score_geral": round(score_geral, 2),
             "responses": responses_data,
+            "transcript": transcript,
+            "category_scores": category_scores_calc,
+            "org_profile": org_profile,
         }
 
         feedback_data = await generate_feedback(assessment_data)
 
         # Salva feedback
+        raw_findings = feedback_data.get("findings", [])
+        critical_count = sum(1 for f in raw_findings if f.get("severity") == "CRÍTICO")
+
         feedback = models.AIFeedback(
             assessment_id=assessment_id,
             overall_summary=feedback_data.get("overall_summary", ""),
@@ -880,6 +919,11 @@ async def _generate_and_save_feedback(assessment_id: int, db: Session):
             nivel=nivel,
             nivel_numerico=nivel_numerico,
             coverage_map=json.dumps(coverage_counter, ensure_ascii=False) if coverage_counter else None,
+            findings=json.dumps(raw_findings, ensure_ascii=False),
+            action_plan_90d=json.dumps(feedback_data.get("action_plan_90d", {}), ensure_ascii=False),
+            framework_diagnoses=json.dumps(feedback_data.get("framework_diagnoses", []), ensure_ascii=False),
+            kpi_indicators=json.dumps(feedback_data.get("kpi_indicators", []), ensure_ascii=False),
+            critical_findings_count=critical_count,
         )
         db.add(feedback)
         
@@ -909,6 +953,11 @@ def get_feedback(assessment_id: int, db: Session = Depends(get_db), current_user
         nivel=feedback.nivel,
         nivel_numerico=feedback.nivel_numerico or 0,
         coverage_map=json.loads(feedback.coverage_map) if feedback.coverage_map else None,
+        findings=json.loads(feedback.findings) if feedback.findings else None,
+        action_plan_90d=json.loads(feedback.action_plan_90d) if feedback.action_plan_90d else None,
+        framework_diagnoses=json.loads(feedback.framework_diagnoses) if feedback.framework_diagnoses else None,
+        kpi_indicators=json.loads(feedback.kpi_indicators) if feedback.kpi_indicators else None,
+        critical_findings_count=feedback.critical_findings_count or 0,
         generated_at=feedback.generated_at,
     )
 
@@ -970,7 +1019,7 @@ def get_latest_report(db: Session = Depends(get_db), current_user: models.User =
         return {"score_geral": 0, "nivel": "N/A", "message": "Nenhuma resposta encontrada"}
     
     total_score = sum(r.score for r in responses if r.score) / max(len(responses), 1)
-    nivel, descricao = calculate_maturity_level(total_score)
+    nivel, descricao, _ = calculate_maturity_level(total_score)
     
     return {
         "score_geral": round(total_score, 2),
@@ -981,27 +1030,244 @@ def get_latest_report(db: Session = Depends(get_db), current_user: models.User =
         "status": assessment.status,
     }
 
-@app.get("/assessments/{assessment_id}/report")
-def get_report(assessment_id: int, db: Session = Depends(get_db)):
+_FRAMEWORK_LABELS = {
+    "COBIT": "COBIT 2019",
+    "ITIL": "ITIL 4",
+    "ISO27001": "ISO 27001",
+    "NIST": "NIST CSF",
+    "CIS": "CIS Controls",
+    "ISO20000": "ISO 20000",
+}
+
+def _dominant_framework_for_category(category_name: str, db: Session) -> str:
+    """Retorna o label do framework mais frequente nas questões de uma categoria."""
+    cat = db.query(models.Category).filter(models.Category.name == category_name).first()
+    if not cat:
+        return "—"
+    counts: dict[str, int] = {}
+    for sub in cat.subcategories:
+        for q in sub.questions:
+            if not q.framework_refs:
+                continue
+            try:
+                refs = json.loads(q.framework_refs) if isinstance(q.framework_refs, str) else q.framework_refs
+            except Exception:
+                continue
+            for ref in refs:
+                prefix = ref.split(":")[0] if ":" in ref else ref
+                counts[prefix] = counts.get(prefix, 0) + 1
+    if not counts:
+        return "—"
+    dominant = max(counts, key=counts.get)
+    return _FRAMEWORK_LABELS.get(dominant, dominant)
+
+
+@app.get("/assessments/{assessment_id}/report", response_model=schemas.ReportResponse)
+def get_report(
+    assessment_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    assessment = (
+        db.query(models.Assessment)
+        .options(joinedload(models.Assessment.company), joinedload(models.Assessment.evaluator))
+        .filter(models.Assessment.id == assessment_id)
+        .first()
+    )
+    if not assessment:
+        raise HTTPException(status_code=404, detail="Assessment não encontrado")
+
+    # Permissões: COMPANY só vê o próprio, EVALUATOR só vê os que avaliou, ADMIN vê tudo
+    role = current_user.role
+    if role == models.UserRole.COMPANY and assessment.company_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Acesso negado")
+    if role == models.UserRole.EVALUATOR and assessment.evaluator_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Acesso negado")
+
+    fb = assessment.feedback
+    if not fb:
+        raise HTTPException(status_code=404, detail="Relatório ainda não gerado para esta avaliação")
+
+    # Desserializar campos JSON do AIFeedback
+    def _load(val, default):
+        if val is None:
+            return default
+        if isinstance(val, (dict, list)):
+            return val
+        try:
+            return json.loads(val)
+        except Exception:
+            return default
+
+    category_scores: dict = _load(fb.category_scores, {})
+    strengths: list = _load(fb.strengths, [])
+    weaknesses: list = _load(fb.weaknesses, [])
+    recommendations: list = _load(fb.recommendations, [])
+    findings: list = _load(fb.findings, [])
+    action_plan_90d: dict = _load(fb.action_plan_90d, {})
+    framework_diagnoses: list = _load(fb.framework_diagnoses, [])
+    kpi_indicators: list = _load(fb.kpi_indicators, [])
+    coverage_map: dict = _load(fb.coverage_map, {})
+
+    # Enriquecer scores por categoria com o framework dominante
+    category_scores_enriched = [
+        schemas.ReportCategoryScore(
+            name=cat_name,
+            framework=_dominant_framework_for_category(cat_name, db),
+            score=round(float(score), 1),
+        )
+        for cat_name, score in category_scores.items()
+    ]
+
+    # Dados da empresa
+    company_user = assessment.company
+    regulations_raw = _load(company_user.regulations, []) if company_user else []
+    company_data = schemas.ReportCompany(
+        name=company_user.company_name or company_user.username if company_user else "—",
+        sector=company_user.sector if company_user else None,
+        employee_count=company_user.employee_count if company_user else None,
+        it_model=company_user.it_model if company_user else None,
+        regulations=regulations_raw if isinstance(regulations_raw, list) else None,
+    )
+
+    evaluator_data = None
+    if assessment.evaluator:
+        evaluator_data = schemas.ReportEvaluator(name=assessment.evaluator.username)
+
+    nivel, nivel_descricao, nivel_numerico = calculate_maturity_level(fb.score_geral)
+    critical_count = fb.critical_findings_count or sum(
+        1 for f in findings if f.get("severity") == "CRÍTICO"
+    )
+
+    return schemas.ReportResponse(
+        assessment_id=assessment.id,
+        generated_at=fb.generated_at,
+        company=company_data,
+        evaluator=evaluator_data,
+        score_geral=round(fb.score_geral, 1),
+        nivel=fb.nivel or nivel,
+        nivel_numerico=fb.nivel_numerico or nivel_numerico,
+        nivel_descricao=nivel_descricao,
+        overall_summary=fb.overall_summary or "",
+        strengths=strengths,
+        weaknesses=weaknesses,
+        recommendations=recommendations,
+        category_scores_enriched=category_scores_enriched,
+        findings=findings,
+        critical_findings_count=critical_count,
+        action_plan_90d=action_plan_90d,
+        framework_diagnoses=framework_diagnoses,
+        kpi_indicators=kpi_indicators,
+    )
+
+
+@app.get("/assessments/{assessment_id}/report/pdf")
+def get_report_pdf(
+    assessment_id: int,
+    token: str,
+    db: Session = Depends(get_db),
+):
+    from weasyprint import HTML as WeasyprintHTML
+    from jose import JWTError, jwt as _jwt
+
+    try:
+        payload = _jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username = payload.get("sub")
+        if not username:
+            raise HTTPException(status_code=401, detail="Token inválido")
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Token inválido")
+    current_user = db.query(models.User).filter(models.User.username == username).first()
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Usuário não encontrado")
+
     assessment = db.query(models.Assessment).filter(models.Assessment.id == assessment_id).first()
     if not assessment:
         raise HTTPException(status_code=404, detail="Assessment não encontrado")
-    
-    responses = db.query(models.Response).filter(models.Response.assessment_id == assessment_id).all()
-    if not responses:
-        return {"score_geral": 0, "nivel": "N/A", "message": "Nenhuma resposta encontrada"}
-    
-    total_score = sum(r.score for r in responses if r.score) / max(len(responses), 1)
-    nivel, descricao = calculate_maturity_level(total_score)
-    
-    return {
-        "score_geral": round(total_score, 2),
-        "nivel": nivel,
-        "descricao": descricao,
-        "company": assessment.company.company_name if assessment.company else "",
-        "date": assessment.created_at,
-        "status": assessment.status,
-    }
+
+    if current_user.role == "COMPANY" and assessment.company_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Acesso negado")
+    if current_user.role == "EVALUATOR" and assessment.evaluator_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Acesso negado")
+
+    fb = db.query(models.AIFeedback).filter(models.AIFeedback.assessment_id == assessment_id).first()
+    if not fb:
+        raise HTTPException(status_code=404, detail="Relatório ainda não gerado para este assessment")
+
+    def _load(val):
+        if isinstance(val, str):
+            try:
+                return json.loads(val)
+            except Exception:
+                return val
+        return val or []
+
+    nivel, nivel_descricao, nivel_numerico = calculate_maturity_level(fb.score_geral)
+    score = round(fb.score_geral, 1)
+
+    if score >= 70:
+        score_color = "#22c55e"
+    elif score >= 50:
+        score_color = "#06b6d4"
+    elif score >= 30:
+        score_color = "#f59e0b"
+    else:
+        score_color = "#ef4444"
+
+    company = assessment.company
+    evaluator = assessment.evaluator
+
+    category_scores_raw = _load(fb.category_scores) if hasattr(fb, "category_scores") else []
+    category_scores_enriched = []
+    for cs in (category_scores_raw if isinstance(category_scores_raw, list) else []):
+        cat_name = cs.get("category", "")
+        cat_obj = db.query(models.Category).filter(models.Category.name == cat_name).first()
+        fw_label = "—"
+        if cat_obj:
+            fw_label = _dominant_framework_for_category(cat_obj.id, db)
+        category_scores_enriched.append({**cs, "framework": fw_label})
+
+    findings = _load(fb.findings) if fb.findings else []
+    critical_count = fb.critical_findings_count or sum(1 for f in findings if isinstance(f, dict) and f.get("severity") == "CRÍTICO")
+    action_plan_90d = _load(fb.action_plan_90d) if fb.action_plan_90d else {}
+    framework_diagnoses = _load(fb.framework_diagnoses) if fb.framework_diagnoses else []
+    kpi_indicators = _load(fb.kpi_indicators) if fb.kpi_indicators else []
+    strengths = _load(fb.strengths) if fb.strengths else []
+    weaknesses = _load(fb.weaknesses) if fb.weaknesses else []
+    recommendations = _load(fb.recommendations) if fb.recommendations else []
+
+    generated_at_fmt = fb.generated_at.strftime("%d/%m/%Y %H:%M") if fb.generated_at else datetime.utcnow().strftime("%d/%m/%Y %H:%M")
+
+    html_str = _templates.get_template("report.html").render(
+        company={"name": company.company_name if company else "—", "sector": getattr(company, "sector", "—"), "employee_count": getattr(company, "employee_count", "—"), "it_model": getattr(company, "it_model", "—"), "regulations": getattr(company, "regulations", "—")},
+        evaluator={"name": evaluator.username if evaluator else "—", "email": evaluator.email if evaluator else "—"} if evaluator else {"name": "Autônomo", "email": "—"},
+        score_geral=score,
+        nivel=fb.nivel or nivel,
+        nivel_numerico=fb.nivel_numerico or nivel_numerico,
+        nivel_descricao=nivel_descricao,
+        score_color=score_color,
+        overall_summary=fb.overall_summary or "",
+        strengths=strengths,
+        weaknesses=weaknesses,
+        recommendations=recommendations,
+        category_scores_enriched=category_scores_enriched,
+        findings=findings,
+        critical_findings_count=critical_count,
+        action_plan_90d=action_plan_90d,
+        framework_diagnoses=framework_diagnoses,
+        kpi_indicators=kpi_indicators,
+        generated_at_fmt=generated_at_fmt,
+        assessment_id=assessment_id,
+    )
+
+    pdf_bytes = WeasyprintHTML(string=html_str, base_url="/").write_pdf()
+
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="relatorio-avalia-ai-{assessment_id}.pdf"'},
+    )
+
 
 # ─── Legacy: Sugestões de IA (mantido para o banco de questões) ───────────────
 

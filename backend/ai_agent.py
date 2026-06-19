@@ -10,6 +10,7 @@ Responsável por:
 
 import json
 import os
+import re
 import logging
 
 from database import SessionLocal
@@ -144,8 +145,8 @@ Escala de maturidade:
 
 Seja justo e criterioso. Considere especificidade, consistência e evidências na resposta."""
 
-FEEDBACK_PROMPT = """Você é um especialista em Maturidade de TI.
-Com base nos dados da entrevista fornecidos, gere um feedback executivo completo para a empresa.
+FEEDBACK_PROMPT = """Você é um especialista em Maturidade de TI com profundo conhecimento em COBIT 2019, ITIL 4, ISO 27001, LGPD e demais frameworks de governança.
+Com base nos dados da entrevista fornecidos, gere um diagnóstico completo de maturidade de TI para a empresa.
 
 Retorne APENAS um JSON válido com exatamente esta estrutura:
 {
@@ -153,14 +154,62 @@ Retorne APENAS um JSON válido com exatamente esta estrutura:
   "strengths": ["<ponto forte 1>", "<ponto forte 2>", "<ponto forte 3>"],
   "weaknesses": ["<ponto fraco 1>", "<ponto fraco 2>", "<ponto fraco 3>"],
   "recommendations": [
-    {"title": "<título>", "description": "<descrição>", "priority": "alta|média|baixa"},
     {"title": "<título>", "description": "<descrição>", "priority": "alta|média|baixa"}
   ],
-  "category_scores": {"<categoria>": <score 0-100>, ...}
+  "category_scores": {"<categoria>": <score 0-100>},
+  "findings": [
+    {"severity": "CRÍTICO|ALTO|MÉDIO|BAIXO", "description": "<descrição objetiva do achado>"}
+  ],
+  "action_plan_90d": {
+    "fase_0_15": ["<ação imediata 1>", "<ação imediata 2>"],
+    "fase_15_45": ["<ação de curto prazo 1>", "<ação de curto prazo 2>"],
+    "fase_45_90": ["<ação de médio prazo 1>", "<ação de médio prazo 2>"]
+  },
+  "framework_diagnoses": [
+    {
+      "framework": "<nome do framework, ex: COBIT 2019>",
+      "level": "<Nível X — Nome, ex: Nível 1 — Inicial>",
+      "level_num": <0 a 5>,
+      "description": "<diagnóstico em 2-3 frases sobre o estado atual neste framework>"
+    }
+  ],
+  "kpi_indicators": [
+    {
+      "name": "<nome do indicador>",
+      "current": "<valor atual mencionado ou estimado>",
+      "benchmark": "<meta ou referência de mercado>",
+      "status": "ABAIXO|OK|ACIMA"
+    }
+  ]
 }
 
-Baseie-se nos dados de todas as respostas e scores fornecidos.
-Seja específico, acionável e construtivo. Evite respostas genéricas.
+Diretrizes obrigatórias:
+- findings: problemas concretos identificados nas respostas. Severidade: CRÍTICO = risco imediato ao negócio, ALTO = vulnerabilidade significativa, MÉDIO = melhoria necessária, BAIXO = oportunidade. Mínimo 3, máximo 10 findings.
+- action_plan_90d: ações específicas e acionáveis em 3 fases temporais. Mínimo 2 itens por fase.
+- framework_diagnoses: avalie somente os frameworks pertinentes às categorias cobertas (ex: COBIT 2019, ITIL 4, ISO 27001, LGPD). Máximo 6 frameworks. level_num segue escala: 0=Inexistente, 1=Inicial, 2=Definido, 3=Gerenciado, 4=Otimizando, 5=Excelência.
+
+- kpi_indicators — EXTRAÇÃO RIGOROSA (mínimo 4, máximo 8):
+  PASSO 1 — Varre o campo "transcript" buscando valores numéricos explícitos. Padrões a identificar:
+    * Disponibilidade/uptime: "99%", "disponibilidade de X", "uptime de X", "fora do ar X horas/mês"
+    * MTTR/tempo de resolução: "resolvemos em X horas", "tempo médio de X", "SLA de X horas"
+    * Volume de incidentes: "X chamados por mês", "X tickets por semana", "X incidentes"
+    * Cobertura de backup: "backup a cada X horas", "RTO de X", "RPO de X"
+    * Cobertura de testes: "X% de cobertura", "testes automatizados cobrem X"
+    * Aderência a processos: "X% dos processos documentados", "X processos formalizados"
+    * Equipe/capacitação: "X pessoas na TI", "treinamento a cada X meses"
+    * Segurança: "X vulnerabilidades", "pentest realizado há X meses", "patch em X dias"
+  PASSO 2 — Para cada métrica encontrada, defina benchmark de mercado adequado ao setor (org_profile.sector).
+  PASSO 3 — Determine status comparando current vs benchmark: ABAIXO, OK ou ACIMA.
+  PASSO 4 — Se uma categoria de KPI importante não foi mencionada explicitamente (ex: disponibilidade nunca citada),
+    ESTIME o valor com base no score da categoria correspondente:
+    - score < 40 → current = "Não monitorado formalmente", status = "ABAIXO"
+    - score 40-65 → current = "Parcialmente monitorado", status = "ABAIXO"
+    - score 65-80 → current = "Monitorado com gaps", status = "OK"
+    - score > 80 → current = "Monitorado sistematicamente", status = "OK" ou "ACIMA"
+  Use o campo "current" para citar o trecho exato da entrevista entre aspas quando possível, ex: "\"96% segundo a empresa\"".
+  Benchmarks de referência por setor — financeiro: disponibilidade ≥ 99,95%; saúde: MTTR ≤ 2h; outros: disponibilidade ≥ 99,5%, MTTR ≤ 4h P1, SLA ≥ 95%.
+
+Baseie-se em todas as respostas, transcript e scores fornecidos. Seja específico, acionável e construtivo.
 Todo o conteúdo deve estar em PT-BR."""
 
 
@@ -305,6 +354,147 @@ async def evaluate_response(question: str, answer: str) -> dict:
     return {"score": score, "analysis": analysis, "maturity_indicators": []}
 
 
+_KPI_PATTERNS = [
+    # (nome, regex, benchmark, sufixo_display)
+    # sufixo_display: "%", " horas", " chamados/mês", ""
+    (
+        "Disponibilidade dos sistemas críticos",
+        r"(?:dispon\w+|uptime)[^\d]{0,60}(\d[\d,\.]+)\s*%",
+        "≥ 99,5%",
+        "%",
+    ),
+    (
+        "MTTR — Incidentes P1",
+        r"(?:mttr|tempo médio de resolução|resolvemos em|média de)[^\d]*(\d[\d,\.]*)\s*(hora|h\b|minuto)",
+        "≤ 4 horas (P1)",
+        None,  # usa grupo 2 como sufixo
+    ),
+    (
+        "SLA de atendimento cumprido",
+        r"sla[^\d]*(\d[\d,\.]+)\s*%",
+        "≥ 95%",
+        "%",
+    ),
+    (
+        "Volume de chamados mensais",
+        r"(\d[\d\.]*)\s*chamados?\s*(?:por|ao?)\s*m[êe]s",
+        "Referência do setor",
+        " chamados/mês",
+    ),
+    (
+        "RPO — Recovery Point Objective",
+        r"rpo[^\d]*(\d[\d,\.]*)\s*(hora|h\b|minuto|dia)",
+        "≤ 4 horas",
+        None,
+    ),
+    (
+        "RTO — Recovery Time Objective",
+        r"rto[^\d]*(\d[\d,\.]*)\s*(hora|h\b|minuto|dia)",
+        "≤ 2 horas",
+        None,
+    ),
+    (
+        "Cobertura de testes automatizados",
+        r"(?:cobertura|coverage)[^\d]*(\d[\d,\.]+)\s*%",
+        "≥ 60%",
+        "%",
+    ),
+    (
+        "Processos documentados/formalizados",
+        r"(\d[\d,\.]+)\s*%[^\n]*(?:process|document|formaliz)",
+        "≥ 80%",
+        "%",
+    ),
+]
+
+_SECTOR_BENCHMARKS = {
+    "financeiro": {
+        "Disponibilidade dos sistemas críticos": ("≥ 99,95%", 99.95),
+        "MTTR — Incidentes P1": ("≤ 2 horas", 2),
+        "SLA de atendimento cumprido": ("≥ 98%", 98),
+    },
+    "saude": {
+        "Disponibilidade dos sistemas críticos": ("≥ 99,9%", 99.9),
+        "MTTR — Incidentes P1": ("≤ 2 horas", 2),
+    },
+}
+
+
+def _extract_kpis_from_transcript(
+    transcript: str,
+    category_scores: dict,
+    score_geral: float,
+    org_profile: dict,
+) -> list[dict]:
+    """Extrai KPIs do transcript por regex; usa estimativas quando não encontra valores."""
+    transcript_lower = (transcript or "").lower()
+    sector = (org_profile.get("sector") or "").lower()
+    sector_bm = _SECTOR_BENCHMARKS.get(sector, {})
+    found: dict[str, dict] = {}
+
+    for entry in _KPI_PATTERNS:
+        kpi_name, pattern, default_bm, display_suffix = entry
+        m = re.search(pattern, transcript_lower, re.IGNORECASE)
+        if not m:
+            continue
+        raw_val = m.group(1).replace(",", ".")
+        if display_suffix is None:
+            # usa o grupo 2 capturado (ex: "hora", "minuto")
+            unit = m.group(2) if m.lastindex and m.lastindex >= 2 else ""
+            current_str = f"{raw_val} {unit}".strip()
+        else:
+            current_str = f"{raw_val}{display_suffix}"
+        benchmark = sector_bm.get(kpi_name, (default_bm, None))[0]
+        # Determina status comparando numericamente quando possível
+        try:
+            val = float(raw_val)
+            bm_num = sector_bm.get(kpi_name, (None, None))[1]
+            if bm_num is None:
+                bm_match = re.search(r"[\d,\.]+", default_bm)
+                bm_num = float(bm_match.group().replace(",", ".")) if bm_match else None
+            if bm_num is not None:
+                is_higher_better = "%" in default_bm and "≥" in default_bm
+                is_lower_better = "≤" in default_bm
+                if is_higher_better:
+                    status = "ACIMA" if val >= bm_num else ("OK" if val >= bm_num * 0.95 else "ABAIXO")
+                elif is_lower_better:
+                    status = "ACIMA" if val <= bm_num * 0.8 else ("OK" if val <= bm_num else "ABAIXO")
+                else:
+                    status = "OK"
+            else:
+                status = "OK"
+        except Exception:
+            status = "OK"
+
+        found[kpi_name] = {"name": kpi_name, "current": f'"{current_str}" (entrevista)', "benchmark": benchmark, "status": status}
+
+    # Estimativas para KPIs não encontrados no transcript
+    estimates = [
+        ("Disponibilidade dos sistemas críticos", "≥ 99,5%"),
+        ("MTTR — Incidentes P1", "≤ 4 horas"),
+        ("SLA de atendimento cumprido", "≥ 95%"),
+        ("Processos de TI documentados", "≥ 80%"),
+        ("Cobertura de backup", "RPO ≤ 4h / RTO ≤ 2h"),
+    ]
+    for kpi_name, bm in estimates:
+        if kpi_name in found:
+            continue
+        rel_score = category_scores.get("Gestao de Servicos", category_scores.get("Gestão de Serviços", score_geral))
+        if rel_score < 40:
+            current, status = "Não monitorado formalmente", "ABAIXO"
+        elif rel_score < 65:
+            current, status = "Monitorado parcialmente", "ABAIXO"
+        elif rel_score < 80:
+            current, status = "Monitorado com gaps", "OK"
+        else:
+            current, status = "Monitorado sistematicamente", "OK"
+        found[kpi_name] = {"name": kpi_name, "current": current, "benchmark": bm, "status": status}
+        if len(found) >= 6:
+            break
+
+    return list(found.values())[:8]
+
+
 async def generate_feedback(assessment_data: dict) -> dict:
     """Gera feedback completo pós-entrevista."""
     data_str = json.dumps(assessment_data, ensure_ascii=False, indent=2)
@@ -367,6 +557,51 @@ async def generate_feedback(assessment_data: dict) -> dict:
             "Processos": score * 0.95,
             "Pessoas": score * 1.0,
         },
+        "findings": [
+            {"severity": "ALTO", "description": "Formalização de processos de TI ainda incipiente — decisões tomadas de forma ad-hoc sem registro ou padrão."},
+            {"severity": "MÉDIO", "description": "Adoção de frameworks de referência (COBIT, ITIL) abaixo do esperado para o porte da organização."},
+            {"severity": "MÉDIO", "description": "Gestão baseada em indicadores pouco estruturada — KPIs de TI não monitorados sistematicamente."},
+        ],
+        "action_plan_90d": {
+            "fase_0_15": [
+                "Mapear e documentar os processos críticos de TI existentes",
+                "Definir responsáveis formais para cada área de TI",
+            ],
+            "fase_15_45": [
+                "Implantar ferramenta de service desk para gestão de incidentes",
+                "Elaborar política de segurança da informação e controle de acesso",
+            ],
+            "fase_45_90": [
+                "Estabelecer comitê de TI com participação da diretoria",
+                "Definir KPIs de TI e dashboard de acompanhamento mensal",
+            ],
+        },
+        "framework_diagnoses": [
+            {
+                "framework": "COBIT 2019",
+                "level": "Nível 1 — Inicial",
+                "level_num": 1,
+                "description": "Governança de TI opera de forma reativa sem processos formais. Decisões são tomadas ad-hoc sem alinhamento estratégico documentado.",
+            },
+            {
+                "framework": "ITIL 4",
+                "level": "Nível 1 — Inicial",
+                "level_num": 1,
+                "description": "Gestão de serviços de TI sem catálogo formal, SLAs ou processo de tratamento de incidentes estruturado.",
+            },
+            {
+                "framework": "ISO 27001",
+                "level": "Nível 0 — Inexistente",
+                "level_num": 0,
+                "description": "Política de segurança da informação ausente ou informal. Controles de acesso e gestão de vulnerabilidades não implementados formalmente.",
+            },
+        ],
+        "kpi_indicators": _extract_kpis_from_transcript(
+            assessment_data.get("transcript", ""),
+            assessment_data.get("category_scores", {}),
+            score,
+            assessment_data.get("org_profile", {}),
+        ),
     }
 
 

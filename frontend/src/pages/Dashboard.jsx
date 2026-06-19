@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
 import InterviewChat from './InterviewChat';
 import FeedbackReport from './FeedbackReport';
+import Report from './Report';
 import ManualForm from './ManualForm';
 
 import { API_URL } from '../config';
@@ -779,7 +780,7 @@ const CompanyInterviews = ({ onStartInterview }) => {
 };
 
 // ─── Company: My Feedbacks ─────────────────────────────────────────────────────
-const CompanyFeedbacks = ({ onViewFeedback }) => {
+const CompanyFeedbacks = ({ onViewFeedback, onViewReport }) => {
   const [assessments, setAssessments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -830,9 +831,14 @@ const CompanyFeedbacks = ({ onViewFeedback }) => {
             </p>
           </div>
           {a.has_feedback && (
-            <button className="btn-primary" onClick={() => onViewFeedback(a.id)}>
-              <Icon name="report" size={16} color="#00363d" /> Ver Feedback
-            </button>
+            <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
+              <button className="btn-secondary" onClick={() => onViewFeedback(a.id)} style={{ fontSize: '0.82rem', padding: '0.5rem 1rem' }}>
+                <Icon name="stats" size={14} /> Feedback IA
+              </button>
+              <button className="btn-primary" onClick={() => onViewReport(a.id)} style={{ fontSize: '0.82rem', padding: '0.5rem 1rem' }}>
+                <Icon name="report" size={14} color="#00363d" /> Ver Relatório
+              </button>
+            </div>
           )}
         </div>
       ))}
@@ -842,7 +848,7 @@ const CompanyFeedbacks = ({ onViewFeedback }) => {
 };
 
 // ─── Company: Dashboard Home ───────────────────────────────────────────────────
-const CompanyHome = ({ onGoToInterviews, onGoToFeedbacks, onGoToProfile }) => {
+const CompanyHome = ({ onGoToInterviews, onGoToFeedbacks, onGoToProfile, onViewReport }) => {
   const [assessments, setAssessments] = useState([]);
   const [invites, setInvites] = useState([]);
   const [profileIncomplete, setProfileIncomplete] = useState(false);
@@ -900,7 +906,12 @@ const CompanyHome = ({ onGoToInterviews, onGoToFeedbacks, onGoToProfile }) => {
             <p style={{ fontSize: '0.8rem', color: 'var(--primary)', fontWeight: '700', marginBottom: '0.5rem' }}>ÚLTIMO FEEDBACK DISPONÍVEL</p>
             <p style={{ fontWeight: '700' }}>Avaliação #{lastAssessment.id} · {new Date(lastAssessment.created_at).toLocaleDateString('pt-BR')}</p>
           </div>
-          <button className="btn-primary" onClick={onGoToFeedbacks}>Ver Feedback <Icon name="arrow" size={16} color="#00363d" /></button>
+          <div style={{ display: 'flex', gap: '0.6rem' }}>
+              <button className="btn-secondary" onClick={onGoToFeedbacks} style={{ fontSize: '0.82rem' }}>Feedback IA</button>
+              <button className="btn-primary" onClick={() => onViewReport(lastAssessment.id)} style={{ fontSize: '0.82rem' }}>
+                <Icon name="report" size={14} color="#00363d" /> Ver Relatório
+              </button>
+            </div>
         </div>
       )}
 
@@ -1117,10 +1128,11 @@ const TopNavbar = ({ user, activeTab, onMenuClick }) => {
 // ─── Main Dashboard ───────────────────────────────────────────────────────────
 const Dashboard = () => {
   const { user, logout } = useAuth();
-  const [view, setView] = useState('MAIN');  // MAIN | INTERVIEW | FEEDBACK
+  const [view, setView] = useState('MAIN');  // MAIN | INTERVIEW | FORM | FEEDBACK | REPORT
   const [activeTab, setActiveTab] = useState('MAIN');
   const [interviewData, setInterviewData] = useState({ sessionId: null, assessmentId: null, mode: null, inviteId: null });
   const [feedbackAssessmentId, setFeedbackAssessmentId] = useState(null);
+  const [reportAssessmentId, setReportAssessmentId] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [navOpen, setNavOpen] = useState(false);
 
@@ -1142,6 +1154,11 @@ const Dashboard = () => {
   const handleViewFeedback = (assessmentId) => {
     setFeedbackAssessmentId(assessmentId);
     setView('FEEDBACK');
+  };
+
+  const handleViewReport = (assessmentId) => {
+    setReportAssessmentId(assessmentId);
+    setView('REPORT');
   };
 
   const handleSidebarNav = (tab) => {
@@ -1186,6 +1203,15 @@ const Dashboard = () => {
     );
   }
 
+  if (view === 'REPORT') {
+    return (
+      <Report
+        assessmentId={reportAssessmentId}
+        onBack={handleBack}
+      />
+    );
+  }
+
   return (
     <div className="layout-wrapper">
       {navOpen && <div className="sidebar-backdrop hide-desktop" onClick={() => setNavOpen(false)} />}
@@ -1225,13 +1251,14 @@ const Dashboard = () => {
               onGoToInterviews={() => setActiveTab('interviews')}
               onGoToFeedbacks={() => setActiveTab('feedbacks')}
               onGoToProfile={() => setActiveTab('perfil')}
+              onViewReport={handleViewReport}
             />
           )}
           {user?.role === 'COMPANY' && activeTab === 'interviews' && (
             <CompanyInterviews key={`int-${refreshKey}`} onStartInterview={handleStartInterview} />
           )}
           {user?.role === 'COMPANY' && activeTab === 'feedbacks' && (
-            <CompanyFeedbacks key={`fb-${refreshKey}`} onViewFeedback={handleViewFeedback} />
+            <CompanyFeedbacks key={`fb-${refreshKey}`} onViewFeedback={handleViewFeedback} onViewReport={handleViewReport} />
           )}
           {user?.role === 'COMPANY' && activeTab === 'perfil' && <CompanyProfile />}
         </main>

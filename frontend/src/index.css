@@ -906,3 +906,209 @@ input:focus, select:focus {
   .top-navbar  { padding: 0 1.5rem; }
   .creation-header { flex-wrap: wrap; }
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   Report.jsx — Diagnóstico de Maturidade
+══════════════════════════════════════════════════════════════════ */
+.rpt-root {
+  min-height: 100vh;
+  background: var(--bg-dark);
+  padding: 2rem;
+}
+
+.rpt-container {
+  max-width: 960px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.rpt-actions {
+  max-width: 960px;
+  margin: 0 auto 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.rpt-header {
+  position: relative;
+}
+
+.rpt-header-meta {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 2rem;
+}
+
+.rpt-company-name {
+  font-size: 1.8rem;
+  font-weight: 900;
+  letter-spacing: -0.8px;
+  margin: 0.4rem 0 0.8rem;
+  line-height: 1.2;
+}
+
+.rpt-meta-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.rpt-pill {
+  padding: 0.2rem 0.7rem;
+  border-radius: 8px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  background: rgba(255,255,255,0.07);
+  border: 1px solid var(--glass-border);
+  color: var(--text-muted);
+}
+
+.rpt-pill-accent {
+  background: rgba(0,229,255,0.08);
+  border-color: rgba(0,229,255,0.25);
+  color: var(--primary);
+}
+
+.rpt-nivel-badge {
+  display: inline-block;
+  padding: 0.3rem 0.9rem;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+}
+
+.rpt-badge-strip {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--glass-border);
+}
+
+.rpt-badge-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.rpt-badge-value {
+  font-size: 1.6rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.rpt-badge-label {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  text-align: center;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+
+.rpt-badge-sep {
+  width: 1px;
+  height: 40px;
+  background: var(--glass-border);
+  flex-shrink: 0;
+}
+
+.rpt-section {
+  /* inherits glass-card */
+}
+
+.rpt-card {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  padding: 1rem 1.2rem;
+  transition: var(--transition);
+}
+
+.rpt-card:hover {
+  border-color: rgba(0,229,255,0.15);
+  background: rgba(255,255,255,0.045);
+}
+
+.rpt-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+
+.rpt-table th {
+  text-align: left;
+  padding: 0.6rem 1rem;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.rpt-table td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  color: var(--text-main);
+}
+
+.rpt-table tr:last-child td {
+  border-bottom: none;
+}
+
+.rpt-table tr:hover td {
+  background: rgba(255,255,255,0.02);
+}
+
+.rpt-plan-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+
+.rpt-plan-col {
+  background: rgba(255,255,255,0.02);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.rpt-fw-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1rem;
+}
+
+.rpt-fw-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.rpt-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+
+/* Mobile overrides */
+@media (max-width: 640px) {
+  .rpt-root          { padding: 1rem; }
+  .rpt-header-meta   { flex-direction: column; }
+  .rpt-company-name  { font-size: 1.3rem; }
+  .rpt-badge-strip   { flex-wrap: wrap; gap: 1rem; }
+  .rpt-badge-sep     { display: none; }
+  .rpt-plan-grid     { grid-template-columns: 1fr; }
+  .rpt-fw-grid       { grid-template-columns: 1fr; }
+  .rpt-grid-2        { grid-template-columns: 1fr; }
+  .rpt-actions       { flex-direction: column; align-items: stretch; }
+  .rpt-table th, .rpt-table td { padding: 0.5rem 0.6rem; }
+}
